@@ -1,5 +1,3 @@
-using CraftingInterpreter.TokenModels;
-
 namespace CraftingInterpreter.AbstractSyntaxTree;
 
 public class AstPrinter : Expression.IVisitor<string>
@@ -29,7 +27,16 @@ public class AstPrinter : Expression.IVisitor<string>
         return Parenthesize(expression.Operator.Lexeme, expression.Right);
     }
 
+    public string VisitTernaryExpression(Expression.Ternary expression)
+    {
+        return Parenthesize("Ternary", expression.Condition, expression.ThenBranch, expression.ElseBranch);
+    }
+
+    public string VisitCommaExpression(Expression.Comma expression)
+    {
+        return Parenthesize("Comma", expression.Evaluate, expression.Return);
+    }
+
     private string Parenthesize(string name, params Expression[] arguments) =>
         $"({name} {string.Join(" ", arguments.Select(e => e.Accept(this)))})";
-
 }

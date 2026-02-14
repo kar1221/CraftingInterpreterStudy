@@ -1,3 +1,4 @@
+using CraftingInterpreter.LoxConsole;
 using CraftingInterpreter.TokenModels;
 
 namespace CraftingInterpreter.Lexing;
@@ -91,6 +92,12 @@ public class Lexer(string source)
                 break;
             case '<':
                 AddToken(Match('=') ? TokenType.LessEqual : TokenType.Less);
+                break;
+            case '?':
+                AddToken(TokenType.Question);
+                break;
+            case ':':
+                AddToken(TokenType.Colon);
                 break;
             case '/':
                 if (Match('/'))

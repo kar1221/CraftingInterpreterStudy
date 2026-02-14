@@ -14,6 +14,8 @@ DefineAst(outputDirectory, "Expression", [
     "Grouping : Expression expression",
     "Literal : object? value",
     "Unary : Token operator, Expression right",
+    "Ternary : Expression condition, Expression thenBranch, Expression elseBranch",
+    "Comma : Expression evaluate, Expression return"
 ]);
 
 return;
@@ -32,6 +34,7 @@ static void DefineAst(string outputDir, string baseName, List<string> types)
     writer.WriteLine("{");
 
     DefineVisitor(writer, baseName, types);
+    writer.WriteLine();
 
     foreach (var type in types)
     {
