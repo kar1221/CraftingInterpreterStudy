@@ -1,5 +1,6 @@
+using CraftingInterpreter.TokenModels;
 
-namespace CraftingInterpreter.CraftingInterpreter.Core;
+namespace CraftingInterpreter.Lexing;
 
 public class Lexer(string source)
 {

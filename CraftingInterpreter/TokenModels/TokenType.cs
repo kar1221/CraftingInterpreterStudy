@@ -1,5 +1,5 @@
 
-namespace CraftingInterpreter.CraftingInterpreter.Core;
+namespace CraftingInterpreter.TokenModels;
 
 public enum TokenType
 {

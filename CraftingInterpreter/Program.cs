@@ -1,8 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
-using CraftingInterpreter.CraftingInterpreter.Core;
+using CraftingInterpreter.Lexing;
 
-namespace CraftingInterpreter.CraftingInterpreter;
+namespace CraftingInterpreter;
 
 internal static class Lox
 {

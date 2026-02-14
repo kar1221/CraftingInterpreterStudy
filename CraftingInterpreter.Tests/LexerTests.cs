@@ -1,4 +1,5 @@
-using CraftingInterpreter.CraftingInterpreter.Core;
+using CraftingInterpreter.Lexing;
+using CraftingInterpreter.TokenModels;
 
 namespace CraftingInterpreter.Tests;
 

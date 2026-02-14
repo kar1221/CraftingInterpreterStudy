@@ -1,5 +1,5 @@
 
-namespace CraftingInterpreter.CraftingInterpreter.Core;
+namespace CraftingInterpreter.TokenModels;
 
 public class Token(TokenType type, string lexeme, object? literal, int line)
 {
