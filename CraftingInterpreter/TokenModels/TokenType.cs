@@ -1,4 +1,3 @@
-
 namespace CraftingInterpreter.TokenModels;
 
 public enum TokenType

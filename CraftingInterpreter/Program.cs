@@ -1,6 +1,8 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using CraftingInterpreter.AbstractSyntaxTree;
 using CraftingInterpreter.Lexing;
+using CraftingInterpreter.TokenModels;
 
 namespace CraftingInterpreter;
 
@@ -8,29 +10,30 @@ internal static class Lox
 {
     private static bool _hadError;
 
-    public static int Main(string[] args)
+    public static void Main(string[] args)
     {
         switch (args.Length)
         {
             case > 1:
                 Console.WriteLine("Usage: jlox [script]");
-                return 64;
+                Environment.Exit(64);
+                break;
             case 1:
-                return RunFile(args[0]);
+                RunFile(args[0]);
+                break;
             default:
                 RunPrompt();
                 break;
         }
-
-        return 0;
     }
 
-    private static int RunFile(string path)
+    private static void RunFile(string path)
     {
         var file = File.ReadAllText(path);
         Run(file);
 
-        return _hadError ? 65 : 0;
+        if(_hadError)
+            Environment.Exit(65);
     }
 
     private static void RunPrompt()
@@ -39,9 +42,10 @@ internal static class Lox
         {
             Console.Write("> ");
             var line = Console.ReadLine();
+            
             if (line == null)
                 break;
-
+            
             Run(line);
             _hadError = false;
         }

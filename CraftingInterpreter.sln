@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CraftingInterpreter", "Craf
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CraftingInterpreter.Tests", "CraftingInterpreter.Tests\CraftingInterpreter.Tests.csproj", "{1AC698C5-238E-44BE-90E8-2A3E4FC9774C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CraftingInterpreter.AstGenerator", "CraftingInterpreter.AstGenerator\CraftingInterpreter.AstGenerator.csproj", "{FE9E2700-72A9-4682-A330-258B3A3FBCEB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{1AC698C5-238E-44BE-90E8-2A3E4FC9774C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1AC698C5-238E-44BE-90E8-2A3E4FC9774C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1AC698C5-238E-44BE-90E8-2A3E4FC9774C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE9E2700-72A9-4682-A330-258B3A3FBCEB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE9E2700-72A9-4682-A330-258B3A3FBCEB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE9E2700-72A9-4682-A330-258B3A3FBCEB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE9E2700-72A9-4682-A330-258B3A3FBCEB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
