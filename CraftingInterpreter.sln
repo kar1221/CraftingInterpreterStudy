@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CraftingInterpreter", "CraftingInterpreter\CraftingInterpreter.csproj", "{B1480196-9FF2-492F-BBCA-FB54694CADF6}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CraftingInterpreter.Tests", "CraftingInterpreter.Tests\CraftingInterpreter.Tests.csproj", "{1AC698C5-238E-44BE-90E8-2A3E4FC9774C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B1480196-9FF2-492F-BBCA-FB54694CADF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1480196-9FF2-492F-BBCA-FB54694CADF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1480196-9FF2-492F-BBCA-FB54694CADF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1480196-9FF2-492F-BBCA-FB54694CADF6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1AC698C5-238E-44BE-90E8-2A3E4FC9774C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1AC698C5-238E-44BE-90E8-2A3E4FC9774C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1AC698C5-238E-44BE-90E8-2A3E4FC9774C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1AC698C5-238E-44BE-90E8-2A3E4FC9774C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
