@@ -9,13 +9,18 @@ if (args.Length != 1)
 }
 
 var outputDirectory = args[0];
-DefineAst(outputDirectory, "Expression", [
-    "Binary : Expression left, Token operator, Expression right",
-    "Grouping : Expression expression",
+DefineAst(outputDirectory, "Expr", [
+    "Binary : Expr left, Token operator, Expr right",
+    "Grouping : Expr expression",
     "Literal : object? value",
-    "Unary : Token operator, Expression right",
-    "Ternary : Expression condition, Expression thenBranch, Expression elseBranch",
-    "Comma : Expression evaluate, Expression return"
+    "Unary : Token operator, Expr right",
+    "Ternary : Expr condition, Expr thenBranch, Expr elseBranch",
+    "Comma : Expr left, Expr right"
+]);
+
+DefineAst(outputDirectory, "Stmt", [
+    "Expression : Expr expr",
+    "Print : Expr expr"
 ]);
 
 return;
@@ -43,7 +48,7 @@ static void DefineAst(string outputDir, string baseName, List<string> types)
         DefineType(writer, baseName, className, fields);
     }
 
-    writer.WriteLine($"    public abstract T Accept<T>(IVisitor<T> visitor);");
+    writer.WriteLine($"    public abstract T? Accept<T>(IVisitor<T> visitor);");
 
     writer.WriteLine("}");
 }
@@ -72,7 +77,7 @@ static void DefineType(TextWriter writer, string baseName, string className, str
 
     writer.WriteLine();
     writer.WriteLine(
-        $"        public override T Accept<T>(IVisitor<T> visitor) => visitor.Visit{className}{baseName}(this);");
+        $"        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.Visit{className}{baseName}(this);");
 
     writer.WriteLine("    }");
     writer.WriteLine();
@@ -86,7 +91,7 @@ static void DefineVisitor(TextWriter writer, string baseName, List<string> types
     foreach (var type in types)
     {
         var typeName = type.Split(":")[0].Trim();
-        writer.WriteLine($"        T Visit{typeName}{baseName}({typeName} {baseName.ToLower()});");
+        writer.WriteLine($"        T? Visit{typeName}{baseName}({typeName} {baseName.ToLower()});");
     }
 
     writer.WriteLine("    }");

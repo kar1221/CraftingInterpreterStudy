@@ -1,20 +1,25 @@
 namespace CraftingInterpreter.AbstractSyntaxTree;
 
-public class AstPrinter : Expression.IVisitor<string>
+public class AstPrinter : Expr.IVisitor<string>
 {
-    public string Print(Expression expression) => expression.Accept(this);
+    public string Print(Expr expression) 
+    {
+        var result = expression.Accept(this);
+        
+        return result ?? "";
+    }
 
-    public string VisitBinaryExpression(Expression.Binary expression)
+    public string VisitBinaryExpr(Expr.Binary expression)
     {
         return Parenthesize(expression.Operator.Lexeme, expression.Left, expression.Right);
     }
 
-    public string VisitGroupingExpression(Expression.Grouping expression)
+    public string VisitGroupingExpr(Expr.Grouping expression)
     {
         return Parenthesize("group", expression.Expression);
     }
 
-    public string VisitLiteralExpression(Expression.Literal expression)
+    public string VisitLiteralExpr(Expr.Literal expression)
     {
         if (expression.Value == null)
             return "nil";
@@ -22,21 +27,21 @@ public class AstPrinter : Expression.IVisitor<string>
         return expression.Value.ToString() ?? "";
     }
 
-    public string VisitUnaryExpression(Expression.Unary expression)
+    public string VisitUnaryExpr(Expr.Unary expression)
     {
         return Parenthesize(expression.Operator.Lexeme, expression.Right);
     }
 
-    public string VisitTernaryExpression(Expression.Ternary expression)
+    public string VisitTernaryExpr(Expr.Ternary expression)
     {
-        return Parenthesize("Ternary", expression.Condition, expression.ThenBranch, expression.ElseBranch);
+        return Parenthesize("?", expression.Condition, expression.ThenBranch, expression.ElseBranch);
     }
 
-    public string VisitCommaExpression(Expression.Comma expression)
+    public string VisitCommaExpr(Expr.Comma expression)
     {
-        return Parenthesize("Comma", expression.Evaluate, expression.Return);
+        return Parenthesize(",", expression.Left, expression.Right);
     }
 
-    private string Parenthesize(string name, params Expression[] arguments) =>
+    private string Parenthesize(string name, params Expr[] arguments) =>
         $"({name} {string.Join(" ", arguments.Select(e => e.Accept(this)))})";
 }

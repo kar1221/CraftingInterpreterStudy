@@ -7,7 +7,7 @@ namespace CraftingInterpreter.Tests;
 public class LexerTests
 {
     [Test]
-    public static void ShouldSkipSingleLineComments()
+    public static void Lexer_Comment_ShouldSkipSingleLineComments()
     {
         var lexer = new Lexer("// A Comment");
         var tokens = lexer.ScanTokens();
@@ -18,7 +18,7 @@ public class LexerTests
 
 
     [Test]
-    public static void ShouldSkipBlockComments()
+    public static void Lexer_Comment_ShouldSkipBlockComments()
     {
         var lexer = new Lexer("""
                               /* this is a
@@ -33,7 +33,7 @@ public class LexerTests
 
 
     [Test]
-    public static void ShouldWorkForNestedBlockComments()
+    public static void Lexer_Comment_ShouldWorkForNestedBlockComments()
     {
         var lexer = new Lexer("""
                               /* this is a
@@ -47,7 +47,7 @@ public class LexerTests
     }
 
     [Test]
-    public static void ShouldIdentifyConsecutiveTokenCorrectly()
+    public static void Lexer_Token_ShouldIdentifyConsecutiveTokenCorrectly()
     {
         var lexer = new Lexer("<===!=");
 

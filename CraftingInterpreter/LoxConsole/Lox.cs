@@ -1,6 +1,8 @@
+using CraftingInterpreter.Interpret;
+using CraftingInterpreter.Interpret.Errors;
+
 namespace CraftingInterpreter.LoxConsole;
 
-using AbstractSyntaxTree;
 using Lexing;
 using Parsing;
 using TokenModels;
@@ -8,6 +10,9 @@ using TokenModels;
 public static class Lox
 {
     private static bool _hadError;
+    private static bool _hadRuntimeError;
+
+    private static readonly Interpreter Interpreter = new(Console.WriteLine);
 
     public static void Run(string[] args)
     {
@@ -29,10 +34,13 @@ public static class Lox
     private static void RunFile(string path)
     {
         var file = File.ReadAllText(path);
-        Run(file);
+        RunCommand(file);
 
         if (_hadError)
             Environment.Exit(65);
+
+        if (_hadRuntimeError)
+            Environment.Exit(70);
     }
 
     private static void RunPrompt()
@@ -45,23 +53,23 @@ public static class Lox
             if (line == null)
                 break;
 
-            Run(line);
+            RunCommand(line);
             _hadError = false;
         }
     }
 
-    private static void Run(string source)
+    private static void RunCommand(string source)
     {
         var lexer = new Lexer(source);
         var tokens = lexer.ScanTokens();
 
         var parser = new Parser(tokens);
-        var expression = parser.Parse();
+        var statements = parser.Parse();
 
         if (_hadError)
             return;
 
-        Console.WriteLine(new AstPrinter().Print(expression));
+        Interpreter.Interpret(statements);
     }
 
     public static void Error(int line, string message)
@@ -74,17 +82,23 @@ public static class Lox
     {
         if (token.Type == TokenType.Eof)
         {
-            Report(token.Line, " at end", message);
+            Report(token.Line, "at end", message);
         }
         else
         {
-            Report(token.Line, " at '" + token.Lexeme + "'", message);
+            Report(token.Line, "at '" + token.Lexeme + "'", message);
         }
+    }
+
+    public static void RuntimeError(RuntimeError e)
+    {
+        Console.Error.WriteLine($"[Line {e.Token?.Line}] : {e.Message}");
+        _hadRuntimeError = true;
     }
 
     private static void Report(int line, string where, string message)
     {
-        Console.Error.WriteLine($"[line {line}] Error {where}: {message}");
+        Console.Error.WriteLine($"[Line {line}] Error {where}: {message}");
         _hadError = true;
     }
 }

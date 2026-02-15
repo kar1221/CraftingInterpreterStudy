@@ -1,6 +1,6 @@
 using CraftingInterpreter.AbstractSyntaxTree;
 using CraftingInterpreter.LoxConsole;
-using CraftingInterpreter.Parsing.Exceptions;
+using CraftingInterpreter.Parsing.Errors;
 using CraftingInterpreter.TokenModels;
 
 namespace CraftingInterpreter.Parsing;
@@ -21,37 +21,47 @@ public class Parser(List<Token> tokens)
 {
     private int _current;
 
-    public Expression? Parse()
+    public Expr? ParseSingle()
     {
         try
         {
             return Expression();
         }
-        catch (ParseException e)
+        catch (ParseError)
         {
             return null;
         }
     }
 
-    private Expression Expression()
+    public List<Stmt> Parse()
+    {
+        var statements = new List<Stmt>();
+        
+        while(!IsAtEnd())
+            statements.Add(Statement());
+
+        return statements;
+    }
+
+    private Expr Expression()
     {
         return Comma();
     }
 
-    private Expression Comma()
+    private Expr Comma()
     {
         var expr = Conditional();
 
         while (Match(TokenType.Comma))
         {
             var right = Conditional();
-            expr = new Expression.Comma(expr, right);
+            expr = new Expr.Comma(expr, right);
         }
 
         return expr;
     }
 
-    private Expression Conditional()
+    private Expr Conditional()
     {
         var expr = Equality();
 
@@ -61,13 +71,13 @@ public class Parser(List<Token> tokens)
             Consume(TokenType.Colon, "Expect ':' after then branch of ternary expression.");
             var elseBranch = Conditional();
 
-            expr = new Expression.Ternary(expr, thenBranch, elseBranch);
+            expr = new Expr.Ternary(expr, thenBranch, elseBranch);
         }
 
         return expr;
     }
 
-    private Expression Equality()
+    private Expr Equality()
     {
         var expr = Comparison();
 
@@ -75,13 +85,13 @@ public class Parser(List<Token> tokens)
         {
             var operatorToken = Previous();
             var right = Comparison();
-            expr = new Expression.Binary(expr, operatorToken, right);
+            expr = new Expr.Binary(expr, operatorToken, right);
         }
 
         return expr;
     }
 
-    private Expression Comparison()
+    private Expr Comparison()
     {
         var expr = Term();
 
@@ -89,13 +99,13 @@ public class Parser(List<Token> tokens)
         {
             var operatorToken = Previous();
             var right = Term();
-            expr = new Expression.Binary(expr, operatorToken, right);
+            expr = new Expr.Binary(expr, operatorToken, right);
         }
 
         return expr;
     }
 
-    private Expression Term()
+    private Expr Term()
     {
         var expr = Factor();
 
@@ -103,13 +113,13 @@ public class Parser(List<Token> tokens)
         {
             var operatorToken = Previous();
             var right = Factor();
-            expr = new Expression.Binary(expr, operatorToken, right);
+            expr = new Expr.Binary(expr, operatorToken, right);
         }
 
         return expr;
     }
 
-    private Expression Factor()
+    private Expr Factor()
     {
         var expr = Unary();
 
@@ -117,17 +127,17 @@ public class Parser(List<Token> tokens)
         {
             var operatorToken = Previous();
             var right = Unary();
-            expr = new Expression.Binary(expr, operatorToken, right);
+            expr = new Expr.Binary(expr, operatorToken, right);
         }
 
         return expr;
     }
 
-    private Expression Unary()
+    private Expr Unary()
     {
         if (Match(TokenType.Bang, TokenType.Minus))
         {
-            return new Expression.Unary(Previous(), Unary());
+            return new Expr.Unary(Previous(), Unary());
         }
 
         if (!Match(TokenType.Comma, TokenType.Question, TokenType.EqualEqual, TokenType.BangEqual, TokenType.Less,
@@ -136,20 +146,20 @@ public class Parser(List<Token> tokens)
         
         var operatorToken = Previous();
         Unary();
-        throw Error(operatorToken, "Binary operating missing left-hand operand");
+        throw Error(operatorToken, "Binary operator missing left-hand operand");
     }
 
-    private Expression Primary()
+    private Expr Primary()
     {
-        if (Match(TokenType.False)) return new Expression.Literal(false);
-        if (Match(TokenType.True)) return new Expression.Literal(true);
-        if (Match(TokenType.Nil)) return new Expression.Literal(null);
-        if (Match(TokenType.Number, TokenType.String)) return new Expression.Literal(Previous().Literal);
+        if (Match(TokenType.False)) return new Expr.Literal(false);
+        if (Match(TokenType.True)) return new Expr.Literal(true);
+        if (Match(TokenType.Nil)) return new Expr.Literal(null);
+        if (Match(TokenType.Number, TokenType.String)) return new Expr.Literal(Previous().Literal);
         if (Match(TokenType.LeftParen))
         {
             var expr = Expression();
             Consume(TokenType.RightParen, "Expected ')' after expression.");
-            return new Expression.Grouping(expr);
+            return new Expr.Grouping(expr);
         }
 
         throw Error(Peek(), $"Unexpected Token {Peek()}");
@@ -160,10 +170,10 @@ public class Parser(List<Token> tokens)
         return Check(type) ? Advance() : throw Error(Peek(), message);
     }
 
-    private static ParseException Error(Token token, string message)
+    private static ParseError Error(Token token, string message)
     {
         Lox.Error(token, message);
-        return new ParseException();
+        return new ParseError();
     }
 
     private void Synchronize()
@@ -190,6 +200,28 @@ public class Parser(List<Token> tokens)
 
             Advance();
         }
+    }
+
+    private Stmt Statement()
+    {
+        if (Match(TokenType.Print))
+            return PrintStatement();
+
+        return ExpressionStatement();
+    }
+
+    private Stmt PrintStatement()
+    {
+        var value = Expression();
+        Consume(TokenType.SemiColon, "Expect ';' after value.");
+        return new Stmt.Print(value);
+    }
+
+    private Stmt ExpressionStatement()
+    {
+        var expr = Expression();
+        Consume(TokenType.SemiColon, "Expect ';' after expression.");
+        return new Stmt.Expression(expr);
     }
 
 
