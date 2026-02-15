@@ -4,8 +4,11 @@ using CraftingInterpreter.Parsing.Errors;
 using CraftingInterpreter.TokenModels;
 
 namespace CraftingInterpreter.Parsing;
+
+/* Expression */
 /*
- * Expression -> Comma
+ * Expression -> Assignment
+ * Assignment -> IDENTIFIER "=" Assignment | Comma
  * Comma -> Conditional ( "," Conditional )*
  * Conditional -> Equality ( "?" Expression ":" Conditional )*
  * Equality -> Comparison ( ( "!=" | "==" ) Comparison)*
@@ -14,7 +17,15 @@ namespace CraftingInterpreter.Parsing;
  * Factor -> Unary ( ( "/" | "*" ) Unary )*
  * Unary -> ( "!" | "-" ) Unary | Primary | ErrorBinary
  * ErrorBinary -> ( "," | "?" | "==" | "!=" | "<" | "<=" | ">" | ">=" | "+" | "*" | "/" ) Expression
- * Primary -> NUMBER | STRING | "true" | "false" | "nil" | "{" Expression "}"
+ * Primary -> NUMBER | STRING | "true" | "false" | "nil" | "{" Expression "} | IDENTIFIER"
+ */
+/* Statement */
+/*
+ * Program -> Declaration* EOF
+ * Declaration -> VarDeclaration | Statement
+ * Statement -> ExprStatement | PrintStatement
+ * VarDeclaration -> "var" IDENTIFIER ( "=" Expression )? ";"
+ * Block -> "{" Declaration* "}"
  */
 
 public class Parser(List<Token> tokens)
@@ -36,16 +47,39 @@ public class Parser(List<Token> tokens)
     public List<Stmt> Parse()
     {
         var statements = new List<Stmt>();
-        
-        while(!IsAtEnd())
-            statements.Add(Statement());
+
+        while (!IsAtEnd())
+            statements.Add(Declaration()!);
 
         return statements;
     }
 
+    #region Expression
+
     private Expr Expression()
     {
-        return Comma();
+        return Assignment();
+    }
+
+    private Expr Assignment()
+    {
+        var expr = Comma();
+
+        if (Match(TokenType.Equal))
+        {
+            var equals = Previous();
+            var value = Assignment();
+
+            if (expr is Expr.Variable v)
+            {
+                var name = v.Name;
+                return new Expr.Assign(name, value);
+            }
+
+            throw Error(equals, "Invalid assignment target.");
+        }
+
+        return expr;
     }
 
     private Expr Comma()
@@ -143,7 +177,7 @@ public class Parser(List<Token> tokens)
         if (!Match(TokenType.Comma, TokenType.Question, TokenType.EqualEqual, TokenType.BangEqual, TokenType.Less,
                 TokenType.LessEqual, TokenType.Greater, TokenType.GreaterEqual, TokenType.Plus, TokenType.Minus,
                 TokenType.Slash, TokenType.Star)) return Primary();
-        
+
         var operatorToken = Previous();
         Unary();
         throw Error(operatorToken, "Binary operator missing left-hand operand");
@@ -155,6 +189,8 @@ public class Parser(List<Token> tokens)
         if (Match(TokenType.True)) return new Expr.Literal(true);
         if (Match(TokenType.Nil)) return new Expr.Literal(null);
         if (Match(TokenType.Number, TokenType.String)) return new Expr.Literal(Previous().Literal);
+        if (Match(TokenType.Identifier))
+            return new Expr.Variable(Previous());
         if (Match(TokenType.LeftParen))
         {
             var expr = Expression();
@@ -164,6 +200,8 @@ public class Parser(List<Token> tokens)
 
         throw Error(Peek(), $"Unexpected Token {Peek()}");
     }
+
+    #endregion
 
     private Token Consume(TokenType type, string message)
     {
@@ -202,10 +240,15 @@ public class Parser(List<Token> tokens)
         }
     }
 
+    #region Statement
+
     private Stmt Statement()
     {
         if (Match(TokenType.Print))
             return PrintStatement();
+
+        if (Match(TokenType.LeftBrace))
+            return new Stmt.Block(Block());
 
         return ExpressionStatement();
     }
@@ -223,6 +266,56 @@ public class Parser(List<Token> tokens)
         Consume(TokenType.SemiColon, "Expect ';' after expression.");
         return new Stmt.Expression(expr);
     }
+
+    private Stmt? Declaration()
+    {
+        try
+        {
+            if (Match(TokenType.Var))
+                return VarDeclaration();
+
+            return Statement();
+        }
+        catch (ParseError)
+        {
+            Synchronize();
+            return null;
+        }
+    }
+
+    private Stmt VarDeclaration()
+    {
+        var name = Consume(TokenType.Identifier, "Expect variable name.");
+
+        Expr? initializer = null;
+
+        if (Match(TokenType.Equal))
+            initializer = Expression();
+
+        Consume(TokenType.SemiColon, "Expect ';' after variable declaration.");
+        return new Stmt.Var(name, initializer);
+    }
+
+    private List<Stmt> Block()
+    {
+        var statements = new List<Stmt>();
+
+        while (!Check(TokenType.RightBrace) && !IsAtEnd())
+        {
+            var stmt = Declaration();
+
+            if (stmt == null)
+                continue;
+
+            statements.Add(stmt);
+        }
+
+        Consume(TokenType.RightBrace, "Expect '}' after block");
+
+        return statements;
+    }
+
+    #endregion
 
 
     private bool Match(params TokenType[] types)

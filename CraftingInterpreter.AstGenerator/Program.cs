@@ -10,18 +10,23 @@ if (args.Length != 1)
 
 var outputDirectory = args[0];
 DefineAst(outputDirectory, "Expr", [
+    "Assign : Token name, Expr? value",
     "Binary : Expr left, Token operator, Expr right",
     "Grouping : Expr expression",
     "Literal : object? value",
     "Unary : Token operator, Expr right",
     "Ternary : Expr condition, Expr thenBranch, Expr elseBranch",
-    "Comma : Expr left, Expr right"
+    "Comma : Expr left, Expr right",
+    "Variable : Token name"
 ]);
 
 DefineAst(outputDirectory, "Stmt", [
+    "Block : List<Stmt> statements",
     "Expression : Expr expr",
-    "Print : Expr expr"
+    "Print : Expr expr",
+    "Var : Token name, Expr? initializer",
 ]);
+
 
 return;
 

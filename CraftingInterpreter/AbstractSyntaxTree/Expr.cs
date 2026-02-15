@@ -6,12 +6,22 @@ public abstract class Expr
 {
     public interface IVisitor<out T>
     {
+        T? VisitAssignExpr(Assign expr);
         T? VisitBinaryExpr(Binary expr);
         T? VisitGroupingExpr(Grouping expr);
         T? VisitLiteralExpr(Literal expr);
         T? VisitUnaryExpr(Unary expr);
         T? VisitTernaryExpr(Ternary expr);
         T? VisitCommaExpr(Comma expr);
+        T? VisitVariableExpr(Variable expr);
+    }
+
+    public class Assign(Token @name, Expr? @value) : Expr
+    {
+        public Token Name { get; } = @name;
+        public Expr? Value { get; } = @value;
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitAssignExpr(this);
     }
 
     public class Binary(Expr @left, Token @operator, Expr @right) : Expr
@@ -60,6 +70,13 @@ public abstract class Expr
         public Expr Right { get; } = @right;
 
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitCommaExpr(this);
+    }
+
+    public class Variable(Token @name) : Expr
+    {
+        public Token Name { get; } = @name;
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitVariableExpr(this);
     }
 
     public abstract T? Accept<T>(IVisitor<T> visitor);

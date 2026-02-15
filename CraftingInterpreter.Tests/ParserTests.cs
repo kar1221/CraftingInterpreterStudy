@@ -127,4 +127,30 @@ public class ParserTests
 
         Assert.That(result, Is.Null);
     }
+
+
+    [Test]
+    public static void Parse_VarDeclaration_ShouldSuccessfullyParse()
+    {
+        var tokens = ToList(
+            SimpleToken(TokenType.Var, "var"),
+            SimpleToken(TokenType.Identifier, "a"),
+            SimpleToken(TokenType.Equal, "="),
+            SimpleToken(TokenType.Number, "2", 2.0),
+            SimpleToken(TokenType.SemiColon, ";")
+        );
+
+        var parser = new Parser(tokens);
+        var result = parser.Parse();
+
+        var stmt = result[0];
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(result, Is.Not.Empty);
+            Assert.That(stmt, Is.InstanceOf<Stmt.Var>());
+            var text = new AstPrinter().VisitVarStmt((Stmt.Var)stmt);
+            Assert.That(text, Is.EqualTo("(var a 2)"));
+        }
+    }
 }

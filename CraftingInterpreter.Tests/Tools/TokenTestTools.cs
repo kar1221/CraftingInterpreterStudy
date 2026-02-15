@@ -1,6 +1,3 @@
-using CraftingInterpreter.Interpret;
-using CraftingInterpreter.Lexing;
-using CraftingInterpreter.Parsing;
 using CraftingInterpreter.TokenModels;
 
 namespace CraftingInterpreter.Tests.Tools;
@@ -19,19 +16,4 @@ public static class TokenTestTools
         return list;
     }
 
-    public static string? EvaluateString(string input)
-    {
-        var lexer = new Lexer(input);
-        var parser = new Parser(lexer.ScanTokens());
-        var expression = parser.ParseSingle();
-
-        if (expression == null)
-            return null;
-
-        var output = "";
-        var interpreter = new Interpreter(s => output = s);
-        interpreter.InterpretSingle(expression);
-
-        return output;
-    }
 }

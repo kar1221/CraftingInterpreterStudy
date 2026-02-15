@@ -2,17 +2,21 @@ using CraftingInterpreter.AbstractSyntaxTree;
 using CraftingInterpreter.Interpret.Errors;
 using CraftingInterpreter.LoxConsole;
 using CraftingInterpreter.TokenModels;
+using Environment = CraftingInterpreter.Env.Environment;
 
 namespace CraftingInterpreter.Interpret;
 
-public class Interpreter(Action<string> writer) : Expr.IVisitor<object>, Stmt.IVisitor<object?>
+public class Interpreter(Action<string>? writer = null) : Expr.IVisitor<object>, Stmt.IVisitor<object?>
 {
+    private Environment _environment = new();
+
     public void InterpretSingle(Expr expression)
     {
         try
         {
             var value = Evaluate(expression);
-            writer(Stringify(value));
+
+            writer?.Invoke(Stringify(value));
         }
         catch (RuntimeError e)
         {
@@ -26,13 +30,30 @@ public class Interpreter(Action<string> writer) : Expr.IVisitor<object>, Stmt.IV
         {
             foreach (var statement in statements)
             {
-                Execute(statement);
+                if (statement is Stmt.Expression exprStmt)
+                {
+                    var value = Evaluate(exprStmt.Expr);
+                    writer?.Invoke(Stringify(value));
+                }
+                else
+                {
+                    Execute(statement);
+                }
             }
         }
         catch (RuntimeError e)
         {
             Lox.RuntimeError(e);
         }
+    }
+
+    #region Expression Ast
+
+    public object? VisitAssignExpr(Expr.Assign expr)
+    {
+        var value = Evaluate(expr.Value);
+        _environment.Assign(expr.Name, value);
+        return value;
     }
 
     public object? VisitBinaryExpr(Expr.Binary expression)
@@ -125,9 +146,22 @@ public class Interpreter(Action<string> writer) : Expr.IVisitor<object>, Stmt.IV
         return Evaluate(expression.Right);
     }
 
-    private object? Evaluate(Expr expression)
+    public object VisitVariableExpr(Expr.Variable expr)
     {
-        return expression.Accept(this);
+        var variable = _environment.Get(expr.Name);
+
+        if (variable == null)
+            throw new RuntimeError("Attempt to access uninitialized variable.", expr.Name);
+
+        return variable;
+    }
+
+    #endregion
+
+
+    private object? Evaluate(Expr? expression)
+    {
+        return expression?.Accept(this);
     }
 
     private static bool IsTruthy(object? o)
@@ -187,6 +221,14 @@ public class Interpreter(Action<string> writer) : Expr.IVisitor<object>, Stmt.IV
         }
     }
 
+    #region Statement
+
+    public object? VisitBlockStmt(Stmt.Block stmt)
+    {
+        ExecuteBlock(stmt.Statements, new Environment(_environment));
+        return null;
+    }
+
     public object? VisitExpressionStmt(Stmt.Expression stmt)
     {
         Evaluate(stmt.Expr);
@@ -196,12 +238,46 @@ public class Interpreter(Action<string> writer) : Expr.IVisitor<object>, Stmt.IV
     public object? VisitPrintStmt(Stmt.Print stmt)
     {
         var value = Evaluate(stmt.Expr);
-        Console.WriteLine(Stringify(value));
+        writer?.Invoke(Stringify(value));
         return null;
     }
+
+    public object? VisitVarStmt(Stmt.Var stmt)
+    {
+        object? value = null;
+        if (stmt.Initializer != null)
+        {
+            value = Evaluate(stmt.Initializer);
+        }
+
+        _environment.Define(stmt.Name.Lexeme, value);
+        return null;
+    }
+
+    #endregion
+
 
     private void Execute(Stmt stmt)
     {
         stmt.Accept(this);
+    }
+
+    private void ExecuteBlock(List<Stmt> statements, Environment environment)
+    {
+        var previous = _environment;
+
+        try
+        {
+            _environment = environment;
+
+            foreach (var statement in statements)
+            {
+                Execute(statement);
+            }
+        }
+        finally
+        {
+            _environment = previous;
+        }
     }
 }
