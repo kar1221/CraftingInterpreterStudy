@@ -14,6 +14,7 @@ DefineAst(outputDirectory, "Expr", [
     "Binary : Expr left, Token operator, Expr right",
     "Grouping : Expr expression",
     "Literal : object? value",
+    "Logical : Expr left, Token operator, Expr right",
     "Unary : Token operator, Expr right",
     "Ternary : Expr condition, Expr thenBranch, Expr elseBranch",
     "Comma : Expr left, Expr right",
@@ -25,6 +26,11 @@ DefineAst(outputDirectory, "Stmt", [
     "Expression : Expr expr",
     "Print : Expr expr",
     "Var : Token name, Expr? initializer",
+    "If : Expr condition, Stmt thenBranch, Stmt? elseBranch",
+    "While : Expr condition, Stmt body",
+    "ForIncrement : Expr incrementExpr",
+    "Break :",
+    "Continue :"
 ]);
 
 
@@ -60,13 +66,16 @@ static void DefineAst(string outputDir, string baseName, List<string> types)
 
 static void DefineType(TextWriter writer, string baseName, string className, string fieldList)
 {
-    var fields = fieldList.Split(",");
+    var fields = fieldList
+        .Split(",", StringSplitOptions.RemoveEmptyEntries)
+        .Select(f => f.Trim())
+        .Where(f => !string.IsNullOrWhiteSpace(f))
+        .ToList();
 
-    var parameters = fields.Select(f => f.Trim().Split(" ")).Select(part =>
+    var parameters = fields.Select(f =>
     {
-        var type = part[0];
-        var name = part[1];
-        return $"{type} @{name}";
+        var parts = f.Split(" ");
+        return $"{parts[0]} @{parts[1]}";
     }).ToList();
 
     writer.WriteLine($"    public class {className}({string.Join(", ", parameters)}) : {baseName}");
@@ -74,10 +83,8 @@ static void DefineType(TextWriter writer, string baseName, string className, str
 
     foreach (var field in fields)
     {
-        var parts = field.Trim().Split(" ");
-        var type = parts[0];
-        var name = parts[1];
-        writer.WriteLine($"        public {type} {name.Capitalize()} {{ get; }} = @{name};");
+        var parts = field.Split(" ");
+        writer.WriteLine($"        public {parts[0]} {parts[1].Capitalize()} {{ get; }} = @{parts[1]};");
     }
 
     writer.WriteLine();

@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace CraftingInterpreter.AbstractSyntaxTree;
 
 public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
@@ -5,13 +7,6 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
     public string Print(Expr expression)
     {
         var result = expression.Accept(this);
-
-        return result ?? "";
-    }
-
-    public string Print(Stmt stmt)
-    {
-        var result = stmt.Accept(this);
 
         return result ?? "";
     }
@@ -39,6 +34,11 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
         return expression.Value.ToString() ?? "";
     }
 
+    public string VisitLogicalExpr(Expr.Logical expr)
+    {
+        return Parenthesize("logical", expr);
+    }
+
     public string VisitUnaryExpr(Expr.Unary expression)
     {
         return Parenthesize(expression.Operator.Lexeme, expression.Right);
@@ -59,15 +59,34 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
         return Parenthesize("Var", expr);
     }
 
-    private string Parenthesize(string name, params Expr[] arguments) =>
-        $"({name} {string.Join(" ", arguments.Select(e => e.Accept(this)))})";
+    private string Parenthesize(string name, params object?[] parts)
+    {
+        var builder = new StringBuilder();
+        builder.Append('(').Append(name);
 
-    private string Parenthesize(string name, params Stmt[] arguments) =>
-        $"({name} {string.Join(" ", arguments.Select(e => e.Accept(this)))})";
+        foreach (var part in parts)
+        {
+            if (part == null)
+                continue;
+            
+            builder.Append(' ');
+            builder.Append(part switch
+            {
+                Expr expr => expr.Accept(this),
+                Stmt stmt => stmt.Accept(this),
+                null      => "nil",
+                _         => part.ToString() // Handles Tokens, Strings, and Numbers
+            });
+        }
+
+        builder.Append(')');
+        return builder.ToString();
+    }
+    
 
     public string VisitBlockStmt(Stmt.Block stmt)
     {
-        return Parenthesize("block", stmt.Statements.ToArray());
+        return Parenthesize("block", [..stmt.Statements]);
     }
 
     public string VisitExpressionStmt(Stmt.Expression stmt)
@@ -83,5 +102,30 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
     public string VisitVarStmt(Stmt.Var stmt)
     {
         return Parenthesize($"var {stmt.Name.Lexeme}", stmt.Initializer!);
+    }
+
+    public string VisitIfStmt(Stmt.If stmt)
+    {
+        return Parenthesize("if", stmt.Condition, stmt.ThenBranch, stmt.ElseBranch);
+    }
+
+    public string VisitWhileStmt(Stmt.While stmt)
+    {
+        return Parenthesize("while", stmt.Condition, stmt.Body);
+    }
+
+    public string VisitForIncrementStmt(Stmt.ForIncrement stmt)
+    {
+        return Parenthesize("increment", stmt.IncrementExpr);
+    }
+
+    public string VisitBreakStmt(Stmt.Break stmt)
+    {
+        return Parenthesize("break");
+    }
+
+    public string VisitContinueStmt(Stmt.Continue stmt)
+    {
+        return Parenthesize("continue");
     }
 }

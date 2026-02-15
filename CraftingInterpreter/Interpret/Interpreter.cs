@@ -116,6 +116,24 @@ public class Interpreter(Action<string>? writer = null) : Expr.IVisitor<object>,
         return expression.Value;
     }
 
+    public object? VisitLogicalExpr(Expr.Logical expr)
+    {
+        var left = Evaluate(expr.Left);
+
+        if (expr.Operator.Type == TokenType.Or)
+        {
+            if (IsTruthy(left))
+                return left;
+        }
+        else
+        {
+            if (!IsTruthy(left))
+                return left;
+        }
+
+        return Evaluate(expr.Right);
+    }
+
     public object? VisitUnaryExpr(Expr.Unary expression)
     {
         var right = Evaluate(expression.Right);
@@ -252,6 +270,69 @@ public class Interpreter(Action<string>? writer = null) : Expr.IVisitor<object>,
 
         _environment.Define(stmt.Name.Lexeme, value);
         return null;
+    }
+
+    public object? VisitIfStmt(Stmt.If stmt)
+    {
+        var condition = stmt.Condition;
+
+        if (IsTruthy(Evaluate(condition)))
+        {
+            Execute(stmt.ThenBranch);
+        }
+        else if (stmt.ElseBranch != null)
+        {
+            Execute(stmt.ElseBranch);
+        }
+
+        return null;
+    }
+
+    public object? VisitWhileStmt(Stmt.While stmt)
+    {
+        try
+        {
+            while (IsTruthy(Evaluate(stmt.Condition)))
+            {
+                try
+                {
+                    Execute(stmt.Body);
+                }
+                catch (ContinueError)
+                {
+                    if (stmt.Body is Stmt.Block { Statements.Count: > 0 } block)
+                    {
+                        var last = block.Statements[^1];
+
+                        if (last is Stmt.ForIncrement forIncrement)
+                        {
+                            Evaluate(forIncrement.IncrementExpr);
+                        }
+                    }
+                }
+            }
+        }
+        catch (BreakError)
+        {
+        }
+
+        return null;
+    }
+
+    public object? VisitForIncrementStmt(Stmt.ForIncrement stmt)
+    {
+        Evaluate(stmt.IncrementExpr);
+        return null;
+    }
+
+    public object VisitBreakStmt(Stmt.Break stmt)
+    {
+        throw new BreakError();
+    }
+
+    public object VisitContinueStmt(Stmt.Continue stmt)
+    {
+        throw new ContinueError();
     }
 
     #endregion

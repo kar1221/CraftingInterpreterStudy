@@ -10,6 +10,11 @@ public abstract class Stmt
         T? VisitExpressionStmt(Expression stmt);
         T? VisitPrintStmt(Print stmt);
         T? VisitVarStmt(Var stmt);
+        T? VisitIfStmt(If stmt);
+        T? VisitWhileStmt(While stmt);
+        T? VisitForIncrementStmt(ForIncrement stmt);
+        T? VisitBreakStmt(Break stmt);
+        T? VisitContinueStmt(Continue stmt);
     }
 
     public class Block(List<Stmt> @statements) : Stmt
@@ -39,6 +44,42 @@ public abstract class Stmt
         public Expr? Initializer { get; } = @initializer;
 
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitVarStmt(this);
+    }
+
+    public class If(Expr @condition, Stmt @thenBranch, Stmt? @elseBranch) : Stmt
+    {
+        public Expr Condition { get; } = @condition;
+        public Stmt ThenBranch { get; } = @thenBranch;
+        public Stmt? ElseBranch { get; } = @elseBranch;
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitIfStmt(this);
+    }
+
+    public class While(Expr @condition, Stmt @body) : Stmt
+    {
+        public Expr Condition { get; } = @condition;
+        public Stmt Body { get; } = @body;
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitWhileStmt(this);
+    }
+
+    public class ForIncrement(Expr @incrementExpr) : Stmt
+    {
+        public Expr IncrementExpr { get; } = @incrementExpr;
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitForIncrementStmt(this);
+    }
+
+    public class Break() : Stmt
+    {
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitBreakStmt(this);
+    }
+
+    public class Continue() : Stmt
+    {
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitContinueStmt(this);
     }
 
     public abstract T? Accept<T>(IVisitor<T> visitor);

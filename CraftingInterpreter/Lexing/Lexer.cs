@@ -31,6 +31,8 @@ public class Lexer(string source)
         ["true"] = TokenType.True,
         ["var"] = TokenType.Var,
         ["while"] = TokenType.While,
+        ["break"] = TokenType.Break,
+        ["continue"] = TokenType.Continue
     };
 
     public List<Token> ScanTokens()
@@ -70,16 +72,16 @@ public class Lexer(string source)
                 AddToken(TokenType.Dot);
                 break;
             case '-':
-                AddToken(TokenType.Minus);
+                AddToken(Match('=') ? TokenType.MinusEqual : TokenType.Minus);
                 break;
             case '+':
-                AddToken(TokenType.Plus);
+                AddToken(Match('=') ? TokenType.PlusEqual : TokenType.Plus);
                 break;
             case ';':
                 AddToken(TokenType.SemiColon);
                 break;
             case '*':
-                AddToken(TokenType.Star);
+                AddToken(Match('=') ? TokenType.StarEqual : TokenType.Star);
                 break;
             case '!':
                 AddToken(Match('=') ? TokenType.BangEqual : TokenType.Bang);
@@ -109,6 +111,8 @@ public class Lexer(string source)
                 {
                     SkipBlockComments();
                 }
+                else if (Match('='))
+                    AddToken(TokenType.SlashEqual);
                 else
                 {
                     AddToken(TokenType.Slash);
@@ -203,7 +207,7 @@ public class Lexer(string source)
     private void SkipBlockComments()
     {
         var depth = 1;
-        
+
         while (!IsAtEnd() && depth > 0)
         {
             var c = Advance();
@@ -214,7 +218,7 @@ public class Lexer(string source)
                     _line++;
                     break;
                 case '/' when Peek() == '*':
-                    Advance(); 
+                    Advance();
                     depth++;
                     break;
                 case '*' when Peek() == '/':
@@ -224,7 +228,7 @@ public class Lexer(string source)
             }
         }
 
-        if(depth > 0)
+        if (depth > 0)
             Lox.Error(_line, "Unexpected end of block comments.");
     }
 
