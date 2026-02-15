@@ -21,6 +21,11 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
         return Parenthesize(expression.Operator.Lexeme, expression.Left, expression.Right);
     }
 
+    public string VisitCallExpr(Expr.Call expr)
+    {
+        return Parenthesize("Call", expr);
+    }
+
     public string VisitGroupingExpr(Expr.Grouping expression)
     {
         return Parenthesize("group", expression.Expression);
@@ -92,6 +97,11 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
     public string VisitExpressionStmt(Stmt.Expression stmt)
     {
         return Parenthesize("expr", stmt.Expr);
+    }
+
+    public string? VisitFunctionStmt(Stmt.Function stmt)
+    {
+        return Parenthesize("Func", stmt);
     }
 
     public string VisitPrintStmt(Stmt.Print stmt)

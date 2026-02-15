@@ -1,14 +1,29 @@
 using CraftingInterpreter.AbstractSyntaxTree;
+using CraftingInterpreter.Interpret.BuiltInFn;
 using CraftingInterpreter.Interpret.Errors;
+using CraftingInterpreter.Interpret.Interfaces;
 using CraftingInterpreter.LoxConsole;
 using CraftingInterpreter.TokenModels;
 using Environment = CraftingInterpreter.Env.Environment;
 
 namespace CraftingInterpreter.Interpret;
 
-public class Interpreter(Action<string>? writer = null) : Expr.IVisitor<object>, Stmt.IVisitor<object?>
+public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
 {
-    private Environment _environment = new();
+    private Environment _environment;
+    private Environment _globals;
+    private readonly Action<string>? _writer;
+
+    public Interpreter(Action<string>? writer = null)
+    {
+        _globals = new Environment();
+        _environment = _globals;
+        _writer = writer;
+        
+        _globals.Define("clock", new Clock());
+        _globals.Define("time", new Time());
+        _globals.Define("date", new Date());
+    }
 
     public void InterpretSingle(Expr expression)
     {
@@ -16,7 +31,7 @@ public class Interpreter(Action<string>? writer = null) : Expr.IVisitor<object>,
         {
             var value = Evaluate(expression);
 
-            writer?.Invoke(Stringify(value));
+            _writer?.Invoke(Stringify(value));
         }
         catch (RuntimeError e)
         {
@@ -33,7 +48,7 @@ public class Interpreter(Action<string>? writer = null) : Expr.IVisitor<object>,
                 if (statement is Stmt.Expression exprStmt)
                 {
                     var value = Evaluate(exprStmt.Expr);
-                    writer?.Invoke(Stringify(value));
+                    _writer?.Invoke(Stringify(value));
                 }
                 else
                 {
@@ -104,6 +119,26 @@ public class Interpreter(Action<string>? writer = null) : Expr.IVisitor<object>,
             default:
                 return null;
         }
+    }
+
+    public object? VisitCallExpr(Expr.Call expr)
+    {
+        var callee = Evaluate(expr.Callee);
+
+        if (callee == null)
+            return null;
+
+        var arguments = expr.Arguments.Select(argument => Evaluate(argument)!).ToList();
+
+        if (callee is not ICallable function)
+            throw new RuntimeError("Can only call function or classes.", expr.Paren);
+
+        if (arguments.Count != function.Arity())
+            throw new RuntimeError($"Expected {function.Arity()} arguments but got {arguments.Count} instead.",
+                expr.Paren);
+
+
+        return function.Call(this, arguments);
     }
 
     public object? VisitGroupingExpr(Expr.Grouping expression)
@@ -253,10 +288,17 @@ public class Interpreter(Action<string>? writer = null) : Expr.IVisitor<object>,
         return null;
     }
 
+    public object? VisitFunctionStmt(Stmt.Function stmt)
+    {
+        var function = new LoxFunction(stmt);
+        _environment.Define(stmt.Name.Lexeme, function);
+        return null;
+    }
+
     public object? VisitPrintStmt(Stmt.Print stmt)
     {
         var value = Evaluate(stmt.Expr);
-        writer?.Invoke(Stringify(value));
+        _writer?.Invoke(Stringify(value));
         return null;
     }
 
@@ -343,7 +385,7 @@ public class Interpreter(Action<string>? writer = null) : Expr.IVisitor<object>,
         stmt.Accept(this);
     }
 
-    private void ExecuteBlock(List<Stmt> statements, Environment environment)
+    public void ExecuteBlock(List<Stmt> statements, Environment environment)
     {
         var previous = _environment;
 

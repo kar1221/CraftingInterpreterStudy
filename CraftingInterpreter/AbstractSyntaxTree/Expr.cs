@@ -8,6 +8,7 @@ public abstract class Expr
     {
         T? VisitAssignExpr(Assign expr);
         T? VisitBinaryExpr(Binary expr);
+        T? VisitCallExpr(Call expr);
         T? VisitGroupingExpr(Grouping expr);
         T? VisitLiteralExpr(Literal expr);
         T? VisitLogicalExpr(Logical expr);
@@ -32,6 +33,15 @@ public abstract class Expr
         public Expr Right { get; } = @right;
 
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitBinaryExpr(this);
+    }
+
+    public class Call(Expr @callee, Token @paren, List<Expr> @arguments) : Expr
+    {
+        public Expr Callee { get; } = @callee;
+        public Token Paren { get; } = @paren;
+        public List<Expr> Arguments { get; } = @arguments;
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitCallExpr(this);
     }
 
     public class Grouping(Expr @expression) : Expr

@@ -12,6 +12,7 @@ var outputDirectory = args[0];
 DefineAst(outputDirectory, "Expr", [
     "Assign : Token name, Expr? value",
     "Binary : Expr left, Token operator, Expr right",
+    "Call : Expr callee, Token paren, List<Expr> arguments",
     "Grouping : Expr expression",
     "Literal : object? value",
     "Logical : Expr left, Token operator, Expr right",
@@ -24,6 +25,7 @@ DefineAst(outputDirectory, "Expr", [
 DefineAst(outputDirectory, "Stmt", [
     "Block : List<Stmt> statements",
     "Expression : Expr expr",
+    "Function : Token name, List<Token> params, List<Stmt> body",
     "Print : Expr expr",
     "Var : Token name, Expr? initializer",
     "If : Expr condition, Stmt thenBranch, Stmt? elseBranch",

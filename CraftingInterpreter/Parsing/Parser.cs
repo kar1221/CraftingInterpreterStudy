@@ -17,14 +17,19 @@ namespace CraftingInterpreter.Parsing;
  * Comparison -> Term ( ( ">" | ">=" | "<" | "<=" ) Term)* ;
  * Term -> Factor ( ( "-" | "+") Factor )* ;
  * Factor -> Unary ( ( "/" | "*" ) Unary )* ;
- * Unary -> ( "!" | "-" | ) Unary | Primary | ErrorBinary ;
+ * Unary -> ( "!" | "-" | ) Unary | Call | ErrorBinary ;
  * ErrorBinary -> ( "," | "?" | "==" | "!=" | "<" | "<=" | ">" | ">=" | "+" | "*" | "/" ) Expression ;
+ * Call -> Primary ( "(" Arguments? ")" )* ;
+ * Argument -> Assignment ( "," Expression )* ;
  * Primary -> NUMBER | STRING | "true" | "false" | "nil" | "{" Expression "}" | IDENTIFIER ;
  */
 /* Statement */
 /*
  * Program -> Declaration* EOF ;
- * Declaration -> VarDeclaration | Statement ;
+ * Declaration -> VarDeclaration | Statement | FuncDeclaration;
+ * FuncDeclaration -> "fun" Function;
+ * Function -> IDENTIFIER "(" Parameters? ")" Block ;
+ * Parameters -> IDENTIFIER ( "," IDENTIFIER )* ;
  * VarDeclaration -> "var" IDENTIFIER ( "=" Expression )? ";" ;
  * Statement -> ExprStatement | PrintStatement | Block | IfStatement | WhileStatement | BreakStatement | ContinueStatement;
  * ExprStatement -> Expression ";" ;
@@ -88,9 +93,9 @@ public class Parser(List<Token> tokens)
         var expr = Conditional();
 
         if (!Match(TokenType.Equal, TokenType.PlusEqual, TokenType.MinusEqual, TokenType.StarEqual,
-                TokenType.SlashEqual)) 
+                TokenType.SlashEqual))
             return expr;
-        
+
         var op = Previous();
         var value = Assignment();
 
@@ -103,7 +108,7 @@ public class Parser(List<Token> tokens)
         {
             return new Expr.Assign(name, value);
         }
-        
+
         var binaryType = op.Type switch
         {
             TokenType.PlusEqual => TokenType.Plus,
@@ -230,11 +235,48 @@ public class Parser(List<Token> tokens)
 
         if (!Match(TokenType.Comma, TokenType.Question, TokenType.EqualEqual, TokenType.BangEqual, TokenType.Less,
                 TokenType.LessEqual, TokenType.Greater, TokenType.GreaterEqual, TokenType.Plus, TokenType.Minus,
-                TokenType.Slash, TokenType.Star)) return Primary();
+                TokenType.Slash, TokenType.Star)) return Call();
 
         var operatorToken = Previous();
         Unary();
         throw Error(operatorToken, "Binary operator missing left-hand operand");
+    }
+
+    private Expr Call()
+    {
+        var expr = Primary();
+
+        while (true)
+        {
+            if (Match(TokenType.LeftParen))
+                expr = FinishCall(expr);
+            else
+                break;
+        }
+
+        return expr;
+    }
+
+    private Expr.Call FinishCall(Expr callee)
+    {
+        var arguments = new List<Expr>();
+
+        if (!Check(TokenType.RightParen))
+        {
+            do
+            {
+                if (arguments.Count >= 255)
+                {
+                    throw Error(Peek(), "Can't have more than 255 arguments");
+                }
+
+                arguments.Add(Assignment());
+            } while (Match(TokenType.Comma));
+        }
+
+        var paren = Consume(TokenType.RightParen, "Expect ')' after arguments");
+
+        return new Expr.Call(callee, paren, arguments);
     }
 
     private Expr Primary()
@@ -406,6 +448,32 @@ public class Parser(List<Token> tokens)
         return new Stmt.Expression(expr);
     }
 
+    private Stmt.Function Function(string kind)
+    {
+        var name = Consume(TokenType.Identifier, $"Expect {kind} name");
+
+        Consume(TokenType.LeftParen, $"Expect '(' after {kind} name.");
+
+        var parameters = new List<Token>();
+
+        if (!Check(TokenType.RightParen))
+        {
+            do
+            {
+                if (parameters.Count >= 255)
+                    throw Error(Peek(), "Can't have more than 255 parameters");
+
+                parameters.Add(Consume(TokenType.Identifier, "Expect parameter name."));
+            } while (Match(TokenType.Comma));
+        }
+
+        Consume(TokenType.RightParen, "Expect ')' after parameters.");
+        Consume(TokenType.LeftBrace, $"Expect '{{' before {kind} body.");
+
+        var body = Block();
+        return new Stmt.Function(name, parameters, body);
+    }
+
     private Stmt.Break BreakStatement()
     {
         Consume(TokenType.SemiColon, "Expect ';' after 'break'.");
@@ -423,6 +491,9 @@ public class Parser(List<Token> tokens)
     {
         try
         {
+            if (Match(TokenType.Fun))
+                return Function("function");
+
             if (Match(TokenType.Var))
                 return VarDeclaration();
 
