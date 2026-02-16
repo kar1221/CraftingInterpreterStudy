@@ -13,6 +13,7 @@ public abstract class Stmt
         T? VisitVarStmt(Var stmt);
         T? VisitIfStmt(If stmt);
         T? VisitWhileStmt(While stmt);
+        T? VisitReturnStmt(Return stmt);
         T? VisitForIncrementStmt(ForIncrement stmt);
         T? VisitBreakStmt(Break stmt);
         T? VisitContinueStmt(Continue stmt);
@@ -71,6 +72,14 @@ public abstract class Stmt
         public Stmt Body { get; } = @body;
 
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitWhileStmt(this);
+    }
+
+    public class Return(Token @keyword, Expr? @value) : Stmt
+    {
+        public Token Keyword { get; } = @keyword;
+        public Expr? Value { get; } = @value;
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitReturnStmt(this);
     }
 
     public class ForIncrement(Expr @incrementExpr) : Stmt

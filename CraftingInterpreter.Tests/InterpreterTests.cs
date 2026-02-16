@@ -1,3 +1,4 @@
+using CraftingInterpreter.Tests.Tools;
 using static CraftingInterpreter.Tests.Tools.InterpreterTestTools;
 
 namespace CraftingInterpreter.Tests;
@@ -11,9 +12,9 @@ public class InterpreterTests
     {
         AssertExpression(input, expected);
     }
-    
+
     [TestCase("1, 2, 3", "3")]
-    [TestCase("1, 2, 3, nil", "nil")]
+    [TestCase("1, 2, 3, nil", "")]
     public static void Interpreter_Comma_ShouldReturnRightMostOperand(string input, string expected)
     {
         AssertExpression(input, expected);
@@ -24,8 +25,8 @@ public class InterpreterTests
     [TestCase("1 - 1 / 2", "0.5")]
     [TestCase("1 < 2", "True")]
     [TestCase("\"2\" + 2", "22")]
-    [TestCase("1 < 2 < 3", "")]
-    [TestCase("1 / 0", "")]
+    [TestCase("1 < 2 < 3", "Operands must be numbers.")]
+    [TestCase("1 / 0", "Cannot divide by zero.")]
     public static void Interpreter_Binary_ShouldReturnExpectedResult(string input, string expected)
     {
         AssertExpression(input, expected);
@@ -37,7 +38,7 @@ public class InterpreterTests
     {
         AssertStatement(input, expected);
     }
-    
+
     [TestCase("var a = 1; print a += 1;", "2")]
     [TestCase("var a = 1; print a -= 1;", "0")]
     [TestCase("var a = 1; print a *= 2;", "2")]
@@ -77,7 +78,7 @@ public class InterpreterTests
                 var a = 3;
               }
               """,
-            "") // Throws
+            "Redeclaration of declared variable.") // Throws
     ]
     [TestCase("""
               var a = 1;
@@ -118,7 +119,7 @@ public class InterpreterTests
               print false and "no";
               """, "False")]
     [TestCase("print 1 and 2 and 3;", "3")]
-    [TestCase("print nil and 2 and 3;", "nil")]
+    [TestCase("print nil and 2 and 3;", "")]
     [TestCase("print nil or 2 or 3;", "2")]
     [TestCase("print nil or nil or 3;", "3")]
     public void Interpreter_Logical_ShouldSuccessfullyEvaluate(string input, string expected)
@@ -139,7 +140,7 @@ public class InterpreterTests
     {
         AssertStatement(input, expected);
     }
-    
+
     [CancelAfter(2000)]
     [TestCase("""
               var i = 0;
@@ -161,7 +162,7 @@ public class InterpreterTests
     {
         AssertStatement(input, expected);
     }
-    
+
     [CancelAfter(2000)]
     [TestCase("""
               for (var i = 0; i < 5; i = i + 1) {
@@ -169,7 +170,7 @@ public class InterpreterTests
                 print i;
               }
               """, "0\n1")]
-   [TestCase("""
+    [TestCase("""
               for (var i = 0; i < 5; i = i + 1) {
                 if (i == 2) continue;
                 print i;
@@ -179,7 +180,7 @@ public class InterpreterTests
     {
         AssertStatement(input, expected);
     }
-    
+
     [CancelAfter(2000)]
     [TestCase("""
               for (var i = 0; i < 2; i = i + 1) {
@@ -193,8 +194,7 @@ public class InterpreterTests
     {
         AssertStatement(input, expected);
     }
-    
-    [CancelAfter(2000)]
+
     [TestCase("""
               var i = 0;
               while (i < 3) {
@@ -212,20 +212,73 @@ public class InterpreterTests
         AssertStatement(input, expected);
     }
     
+    
+    [TestCase("""
+              fun add(a, b) {
+                print a + b;
+              }
+              
+              add(1, 2);
+              """, "3")]
+    [TestCase("""
+              fun add(a, b) {
+                return a + b;
+              }
+
+              print add(1, 2);
+              """, "3")]
+    [TestCase("""
+              fun add_factory(a) {
+                return fun(b) {
+                    return a + b;
+                };
+              }
+
+              print add_factory(2)(2);
+              """, "4")]
+    [TestCase("""
+              fun add_closure(a) {
+                 for(var i = 0; i < 5; i += 1)
+                    print a(i);
+              }
+
+              add_closure((a) => a + 1);
+              """, "1\n2\n3\n4\n5")]
+    [TestCase("""
+              fun add_closure(a) {
+                 for(var i = 0; i < 5; i += 1)
+                    if (i % 2 == 0)
+                        print i;
+              }
+
+              add_closure(5);
+              """, "0\n2\n4")]
+    public void Interpreter_Function(string input, string expected)
+    {
+        AssertStatement(input, expected);
+    }
 
     private static void AssertExpression(string input, string expected)
     {
-        var result = EvaluateExpression(input);
-        Assert.That(result, Is.Not.Null, $"Failed for input: {input}");
-        Assert.That(result, Is.EqualTo(expected), $"Failed for input: {input}");
+        var result = Run(input, isExpression: true);
+        HandleAssertion(result, expected, input);
     }
-
 
     private static void AssertStatement(string input, string expected)
     {
-        var result = EvaluateStatement(input);
-        Assert.That(result, Is.Not.Null, $"Failed for input: {input}");
-        Assert.That(result, Is.EqualTo(expected), $"Failed for input: {input}");
+        var result = Run(input, isExpression: false);
+        HandleAssertion(result, expected, input);
     }
-    
+
+    private static void HandleAssertion(InterpreterResult result, string expected, string input)
+    {
+        if (result.RuntimeError != null)
+        {
+            Assert.That(result.RuntimeError, Is.EqualTo(expected), $"Expected RuntimeError mismatch for: {input}");
+        }
+        else
+        {
+            Assert.That(result.Output, Is.EqualTo(expected), $"Output mismatch for: {input}");
+        }
+    }
 }

@@ -16,12 +16,13 @@ namespace CraftingInterpreter.Parsing;
  * Equality -> Comparison ( ( "!=" | "==" ) Comparison)* ;
  * Comparison -> Term ( ( ">" | ">=" | "<" | "<=" ) Term)* ;
  * Term -> Factor ( ( "-" | "+") Factor )* ;
- * Factor -> Unary ( ( "/" | "*" ) Unary )* ;
+ * Factor -> Unary ( ( "/" | "*" | "%" ) Unary )* ;
  * Unary -> ( "!" | "-" | ) Unary | Call | ErrorBinary ;
  * ErrorBinary -> ( "," | "?" | "==" | "!=" | "<" | "<=" | ">" | ">=" | "+" | "*" | "/" ) Expression ;
  * Call -> Primary ( "(" Arguments? ")" )* ;
  * Argument -> Assignment ( "," Expression )* ;
- * Primary -> NUMBER | STRING | "true" | "false" | "nil" | "{" Expression "}" | IDENTIFIER ;
+ * Primary -> NUMBER | STRING | "true" | "false" | "nil" | "{" Expression "}" | IDENTIFIER | Lambda;
+ * Lambda -> "fun" "(" Parameters? ")" Block | "(" Parameters ")" => ( Block | Expression )
  */
 /* Statement */
 /*
@@ -38,6 +39,7 @@ namespace CraftingInterpreter.Parsing;
  * IfStatement -> "if" "(" Expression ")" Statement ( "else" statement )? ;
  * WhileStatement -> "while" "(" Expression ")" statement ;
  * ForStatement -> "for" "(" ( VarDeclaration | ExprStatement | ";" ) Expression? ";" Expression? ")" Statement;
+ * ReturnStatement -> "return" Expression? ";"
  * BreakStatement -> "break" ";" ;
  * ContinueStatement -> "continue" ";" ;
  */
@@ -216,7 +218,7 @@ public class Parser(List<Token> tokens)
     {
         var expr = Unary();
 
-        while (Match(TokenType.Slash, TokenType.Star))
+        while (Match(TokenType.Slash, TokenType.Star, TokenType.Percent))
         {
             var operatorToken = Previous();
             var right = Unary();
@@ -281,20 +283,78 @@ public class Parser(List<Token> tokens)
 
     private Expr Primary()
     {
+        if (Match(TokenType.Fun)) return Lambda();
         if (Match(TokenType.False)) return new Expr.Literal(false);
         if (Match(TokenType.True)) return new Expr.Literal(true);
         if (Match(TokenType.Nil)) return new Expr.Literal(null);
         if (Match(TokenType.Number, TokenType.String)) return new Expr.Literal(Previous().Literal);
         if (Match(TokenType.Identifier))
             return new Expr.Variable(Previous());
-        if (Match(TokenType.LeftParen))
+
+        if (!Check(TokenType.LeftParen))
+            throw Error(Peek(), $"Unexpected Token {Peek()}");
+
+        var lambda = TryArrowLambda();
+        if (lambda != null)
+            return lambda;
+
+        var expr = Expression();
+        Consume(TokenType.RightParen, "Expected ')' after expression.");
+        return new Expr.Grouping(expr);
+    }
+
+    private Expr.Lambda Lambda()
+    {
+        Consume(TokenType.LeftParen, "Expect '(' after 'fun'.");
+
+        var parameters = Parameter();
+
+        Consume(TokenType.LeftBrace, "Expect '{' before function body.");
+
+        var body = Block();
+        return new Expr.Lambda(parameters, body);
+    }
+
+    private Expr.Lambda? TryArrowLambda()
+    {
+        var start = _current;
+
+        if (!Match(TokenType.LeftParen))
+            return null;
+
+        var parameters = new List<Token>();
+
+        if (!Check(TokenType.RightParen))
         {
-            var expr = Expression();
-            Consume(TokenType.RightParen, "Expected ')' after expression.");
-            return new Expr.Grouping(expr);
+            do
+            {
+                if (!Check(TokenType.Identifier))
+                {
+                    _current = start;
+                    return null;
+                }
+
+                parameters.Add(Advance());
+            } while (Match(TokenType.Comma));
         }
 
-        throw Error(Peek(), $"Unexpected Token {Peek()}");
+        if (!Match(TokenType.RightParen) || !Match(TokenType.Arrow))
+        {
+            _current = start;
+            return null;
+        }
+
+        if (Match(TokenType.LeftBrace))
+        {
+            var body = Block();
+            return new Expr.Lambda(parameters, body);
+        }
+
+        var expression = Expression();
+        var returnToken = new Token(TokenType.Return, "return", null, Peek().Line);
+        var returnStatement = new Stmt.Return(returnToken, expression);
+
+        return new Expr.Lambda(parameters, [returnStatement]);
     }
 
     #endregion
@@ -340,6 +400,9 @@ public class Parser(List<Token> tokens)
 
     private Stmt Statement()
     {
+        if (Match(TokenType.Return))
+            return ReturnStatement();
+
         if (Match(TokenType.Break))
             return BreakStatement();
 
@@ -362,6 +425,40 @@ public class Parser(List<Token> tokens)
             return new Stmt.Block(Block());
 
         return ExpressionStatement();
+    }
+
+    private List<Token> Parameter()
+    {
+        var parameters = new List<Token>();
+
+        if (!Check(TokenType.RightParen))
+        {
+            do
+            {
+                if (parameters.Count >= 255)
+                    throw Error(Peek(), "Can't have more than 255 parameters");
+
+                parameters.Add(Consume(TokenType.Identifier, "Expect parameter name."));
+            } while (Match(TokenType.Comma));
+        }
+
+        Consume(TokenType.RightParen, "Expect ')' after parameters.");
+
+        return parameters;
+    }
+
+    private Stmt.Return ReturnStatement()
+    {
+        var keyword = Previous();
+
+        Expr? value = null;
+
+        if (!Check(TokenType.SemiColon))
+            value = Expression();
+
+        Consume(TokenType.SemiColon, "Expect ';' after return value.");
+
+        return new Stmt.Return(keyword, value);
     }
 
     private Stmt.If IfStatement()
@@ -454,20 +551,8 @@ public class Parser(List<Token> tokens)
 
         Consume(TokenType.LeftParen, $"Expect '(' after {kind} name.");
 
-        var parameters = new List<Token>();
+        var parameters = Parameter();
 
-        if (!Check(TokenType.RightParen))
-        {
-            do
-            {
-                if (parameters.Count >= 255)
-                    throw Error(Peek(), "Can't have more than 255 parameters");
-
-                parameters.Add(Consume(TokenType.Identifier, "Expect parameter name."));
-            } while (Match(TokenType.Comma));
-        }
-
-        Consume(TokenType.RightParen, "Expect ')' after parameters.");
         Consume(TokenType.LeftBrace, $"Expect '{{' before {kind} body.");
 
         var body = Block();

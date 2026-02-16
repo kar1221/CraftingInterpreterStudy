@@ -16,6 +16,7 @@ public enum TokenType
     Star, // *
     Question, // ?
     Colon, // :
+    Percent,
 
     // One or two character tokens
     Bang, // !
@@ -30,6 +31,7 @@ public enum TokenType
     MinusEqual, // -=
     StarEqual, // *=
     SlashEqual, // /=
+    Arrow, // =>
 
     // Literals
     Identifier,

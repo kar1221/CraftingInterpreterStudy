@@ -59,6 +59,11 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
         return Parenthesize(",", expression.Left, expression.Right);
     }
 
+    public string? VisitLambdaExpr(Expr.Lambda expr)
+    {
+        return Parenthesize("lambda", expr.Body, expr.Params);
+    }
+
     public string VisitVariableExpr(Expr.Variable expr)
     {
         return Parenthesize("Var", expr);
@@ -73,21 +78,22 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
         {
             if (part == null)
                 continue;
-            
+
             builder.Append(' ');
             builder.Append(part switch
             {
                 Expr expr => expr.Accept(this),
                 Stmt stmt => stmt.Accept(this),
-                null      => "nil",
-                _         => part.ToString() // Handles Tokens, Strings, and Numbers
+                Stmt[] stmt => string.Join(", ", stmt.Select(s => s.Accept(this))),
+                null => "nil",
+                _ => part.ToString() // Handles Tokens, Strings, and Numbers
             });
         }
 
         builder.Append(')');
         return builder.ToString();
     }
-    
+
 
     public string VisitBlockStmt(Stmt.Block stmt)
     {
@@ -122,6 +128,11 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
     public string VisitWhileStmt(Stmt.While stmt)
     {
         return Parenthesize("while", stmt.Condition, stmt.Body);
+    }
+
+    public string? VisitReturnStmt(Stmt.Return stmt)
+    {
+        return Parenthesize("return", stmt.Keyword, stmt.Value);
     }
 
     public string VisitForIncrementStmt(Stmt.ForIncrement stmt)

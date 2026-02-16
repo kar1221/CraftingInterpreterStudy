@@ -60,16 +60,23 @@ public static class Lox
 
     private static void RunCommand(string source)
     {
-        var lexer = new Lexer(source);
-        var tokens = lexer.ScanTokens();
+        try
+        {
+            var lexer = new Lexer(source);
+            var tokens = lexer.ScanTokens();
 
-        var parser = new Parser(tokens);
-        var statements = parser.Parse();
+            var parser = new Parser(tokens);
+            var statements = parser.Parse();
 
-        if (_hadError)
-            return;
+            if (_hadError)
+                return;
 
-        Interpreter.Interpret(statements);
+            Interpreter.Interpret(statements);
+        }
+        catch (RuntimeError e)
+        {
+            RuntimeError(e);
+        }
     }
 
     public static void Error(int line, string message)

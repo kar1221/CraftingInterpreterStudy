@@ -1,4 +1,5 @@
 using CraftingInterpreter.Interpret;
+using CraftingInterpreter.Interpret.Errors;
 using CraftingInterpreter.Lexing;
 using CraftingInterpreter.Parsing;
 
@@ -6,33 +7,42 @@ namespace CraftingInterpreter.Tests.Tools;
 
 public static class InterpreterTestTools
 {
-    public static string? EvaluateExpression(string input)
+    public static InterpreterResult Run(string input, bool isExpression = false)
     {
-        var lexer = new Lexer(input);
-        var parser = new Parser(lexer.ScanTokens());
-        var expression = parser.ParseSingle();
-
-        if (expression == null)
-            return null;
-
-        var output = "";
-        var interpreter = new Interpreter(s => output = s);
-        interpreter.InterpretSingle(expression);
-
-        return output;
-    }
-    
-    public static string EvaluateStatement(string input)
-    {
-        var lexer = new Lexer(input);
-        var parser = new Parser(lexer.ScanTokens());
-        var expression = parser.Parse();
-
         var output = new List<string>();
-        var interpreter = new Interpreter(output.Add);
-        interpreter.Interpret(expression);
+        string? runtimeErrorMessage = null;
+        var parseError = false;
 
-        return string.Join("\n", output);
+        try
+        {
+            var lexer = new Lexer(input);
+            var tokens = lexer.ScanTokens();
+            var parser = new Parser(tokens);
+
+            if (isExpression)
+            {
+                var expr = parser.ParseSingle();
+                if (expr == null) return new InterpreterResult("", HadParseError: true);
+
+                var interpreter = new Interpreter(s => output.Add(s));
+                interpreter.InterpretSingle(expr);
+            }
+            else
+            {
+                var statements = parser.Parse();
+                var interpreter = new Interpreter(output.Add);
+                interpreter.Interpret(statements);
+            }
+        }
+        catch (RuntimeError error)
+        {
+            runtimeErrorMessage = error.Message;
+        }
+        catch (Exception ex)
+        {
+            runtimeErrorMessage = $"Unexpected System Exception: {ex.Message}";
+        }
+
+        return new InterpreterResult(string.Join("\n", output), runtimeErrorMessage, parseError);
     }
-    
 }

@@ -1,9 +1,9 @@
 namespace CraftingInterpreter.Interpret.Errors;
 
-public class BreakError : SystemException
+public class Break : SystemException
 {
 }
 
-public class ContinueError : SystemException
+public class Continue : SystemException
 {
 }

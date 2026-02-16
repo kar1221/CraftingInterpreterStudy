@@ -2,7 +2,6 @@ using CraftingInterpreter.AbstractSyntaxTree;
 using CraftingInterpreter.Interpret.BuiltInFn;
 using CraftingInterpreter.Interpret.Errors;
 using CraftingInterpreter.Interpret.Interfaces;
-using CraftingInterpreter.LoxConsole;
 using CraftingInterpreter.TokenModels;
 using Environment = CraftingInterpreter.Env.Environment;
 
@@ -11,54 +10,41 @@ namespace CraftingInterpreter.Interpret;
 public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
 {
     private Environment _environment;
-    private Environment _globals;
+    public readonly Environment Globals;
     private readonly Action<string>? _writer;
 
     public Interpreter(Action<string>? writer = null)
     {
-        _globals = new Environment();
-        _environment = _globals;
+        Globals = new Environment();
+        _environment = Globals;
         _writer = writer;
-        
-        _globals.Define("clock", new Clock());
-        _globals.Define("time", new Time());
-        _globals.Define("date", new Date());
+
+        Globals.Define("clock", new Clock());
+        Globals.Define("time", new Time());
+        Globals.Define("date", new Date());
     }
 
     public void InterpretSingle(Expr expression)
     {
-        try
-        {
-            var value = Evaluate(expression);
+        var value = Evaluate(expression);
 
-            _writer?.Invoke(Stringify(value));
-        }
-        catch (RuntimeError e)
-        {
-            Lox.RuntimeError(e);
-        }
+        Write(value);
     }
 
     public void Interpret(List<Stmt> statements)
     {
-        try
+        foreach (var statement in statements)
         {
-            foreach (var statement in statements)
+            if (statement is Stmt.Expression exprStmt)
             {
-                if (statement is Stmt.Expression exprStmt)
-                {
-                    var value = Evaluate(exprStmt.Expr);
-                    _writer?.Invoke(Stringify(value));
-                }
-                else
-                {
-                    Execute(statement);
-                }
+                var value = Evaluate(exprStmt.Expr);
+
+                Write(value);
             }
-        }
-        catch (RuntimeError e)
-        {
-            Lox.RuntimeError(e);
+            else
+            {
+                Execute(statement);
+            }
         }
     }
 
@@ -94,6 +80,8 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
                 return !IsEqual(left, right);
             case TokenType.EqualEqual:
                 return IsEqual(left, right);
+            case TokenType.Percent:
+                return (double)left! % (double)right!;
             case TokenType.Minus:
                 CheckNumberOperands(expression.Operator, left, right);
                 return (double)left! - (double)right!;
@@ -101,7 +89,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
                 CheckNumberOperands(expression.Operator, left, right);
 
                 if (right is double and 0)
-                    throw new RuntimeError("Cannot divide by zero", expression.Operator);
+                    throw new RuntimeError("Cannot divide by zero.", expression.Operator);
 
                 return (double)left! / (double)right!;
             case TokenType.Star:
@@ -114,7 +102,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
                     string a when right is string b => a + b,
                     string a when right is double b => a + b,
                     double a when right is string b => a + b,
-                    _ => throw new RuntimeError("Invalid Operands", expression.Operator)
+                    _ => throw new RuntimeError("Invalid Operands.", expression.Operator)
                 };
             default:
                 return null;
@@ -176,7 +164,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         switch (expression.Operator.Type)
         {
             case TokenType.Bang:
-                return IsTruthy(right);
+                return !IsTruthy(right);
             case TokenType.Minus:
                 CheckNumberOperand(expression.Operator, right);
                 return -(double)right!;
@@ -207,6 +195,11 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
             throw new RuntimeError("Attempt to access uninitialized variable.", expr.Name);
 
         return variable;
+    }
+
+    public object VisitLambdaExpr(Expr.Lambda expr)
+    {
+        return new LoxCallable(expr.Params, expr.Body, _environment);
     }
 
     #endregion
@@ -250,7 +243,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         if (left is double && right is double)
             return;
 
-        throw new RuntimeError("Operands must be numbers", @operator);
+        throw new RuntimeError("Operands must be numbers.", @operator);
     }
 
     private static string Stringify(object? o)
@@ -274,6 +267,14 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         }
     }
 
+    private void Write(object? value)
+    {
+        if (value == null)
+            return;
+
+        _writer?.Invoke(Stringify(value));
+    }
+
     #region Statement
 
     public object? VisitBlockStmt(Stmt.Block stmt)
@@ -290,7 +291,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
 
     public object? VisitFunctionStmt(Stmt.Function stmt)
     {
-        var function = new LoxFunction(stmt);
+        var function = new LoxCallable(stmt, _environment);
         _environment.Define(stmt.Name.Lexeme, function);
         return null;
     }
@@ -298,7 +299,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
     public object? VisitPrintStmt(Stmt.Print stmt)
     {
         var value = Evaluate(stmt.Expr);
-        _writer?.Invoke(Stringify(value));
+        Write(value);
         return null;
     }
 
@@ -330,6 +331,16 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         return null;
     }
 
+    public object VisitReturnStmt(Stmt.Return stmt)
+    {
+        object? value = null;
+
+        if (stmt.Value != null)
+            value = Evaluate(stmt.Value);
+
+        throw new Return(value);
+    }
+
     public object? VisitWhileStmt(Stmt.While stmt)
     {
         try
@@ -340,7 +351,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
                 {
                     Execute(stmt.Body);
                 }
-                catch (ContinueError)
+                catch (Continue)
                 {
                     if (stmt.Body is Stmt.Block { Statements.Count: > 0 } block)
                     {
@@ -354,7 +365,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
                 }
             }
         }
-        catch (BreakError)
+        catch (Break)
         {
         }
 
@@ -369,12 +380,12 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
 
     public object VisitBreakStmt(Stmt.Break stmt)
     {
-        throw new BreakError();
+        throw new Break();
     }
 
     public object VisitContinueStmt(Stmt.Continue stmt)
     {
-        throw new ContinueError();
+        throw new Continue();
     }
 
     #endregion

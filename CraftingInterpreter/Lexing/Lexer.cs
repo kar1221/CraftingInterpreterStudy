@@ -71,6 +71,9 @@ public class Lexer(string source)
             case '.':
                 AddToken(TokenType.Dot);
                 break;
+            case '%':
+                AddToken(TokenType.Percent);
+                break;
             case '-':
                 AddToken(Match('=') ? TokenType.MinusEqual : TokenType.Minus);
                 break;
@@ -87,7 +90,12 @@ public class Lexer(string source)
                 AddToken(Match('=') ? TokenType.BangEqual : TokenType.Bang);
                 break;
             case '=':
-                AddToken(Match('=') ? TokenType.EqualEqual : TokenType.Equal);
+                if (Match('='))
+                    AddToken(TokenType.EqualEqual);
+                else if (Match('>'))
+                    AddToken(TokenType.Arrow);
+                else
+                    AddToken(TokenType.Equal);
                 break;
             case '>':
                 AddToken(Match('=') ? TokenType.GreaterEqual : TokenType.Greater);

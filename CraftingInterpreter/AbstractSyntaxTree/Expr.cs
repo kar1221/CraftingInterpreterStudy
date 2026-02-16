@@ -15,6 +15,7 @@ public abstract class Expr
         T? VisitUnaryExpr(Unary expr);
         T? VisitTernaryExpr(Ternary expr);
         T? VisitCommaExpr(Comma expr);
+        T? VisitLambdaExpr(Lambda expr);
         T? VisitVariableExpr(Variable expr);
     }
 
@@ -90,6 +91,14 @@ public abstract class Expr
         public Expr Right { get; } = @right;
 
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitCommaExpr(this);
+    }
+
+    public class Lambda(List<Token> @params, List<Stmt> @body) : Expr
+    {
+        public List<Token> Params { get; } = @params;
+        public List<Stmt> Body { get; } = @body;
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitLambdaExpr(this);
     }
 
     public class Variable(Token @name) : Expr

@@ -19,6 +19,7 @@ DefineAst(outputDirectory, "Expr", [
     "Unary : Token operator, Expr right",
     "Ternary : Expr condition, Expr thenBranch, Expr elseBranch",
     "Comma : Expr left, Expr right",
+    "Lambda: List<Token> params, List<Stmt> body",
     "Variable : Token name"
 ]);
 
@@ -30,6 +31,7 @@ DefineAst(outputDirectory, "Stmt", [
     "Var : Token name, Expr? initializer",
     "If : Expr condition, Stmt thenBranch, Stmt? elseBranch",
     "While : Expr condition, Stmt body",
+    "Return: Token keyword, Expr? value",
     "ForIncrement : Expr incrementExpr",
     "Break :",
     "Continue :"
