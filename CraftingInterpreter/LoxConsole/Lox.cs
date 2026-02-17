@@ -1,5 +1,6 @@
 using CraftingInterpreter.Interpret;
 using CraftingInterpreter.Interpret.Errors;
+using CraftingInterpreter.Resolution;
 
 namespace CraftingInterpreter.LoxConsole;
 
@@ -70,6 +71,9 @@ public static class Lox
 
             if (_hadError)
                 return;
+
+            var resolver = new Resolver(Interpreter);
+            resolver.Resolve(statements);
 
             Interpreter.Interpret(statements);
         }

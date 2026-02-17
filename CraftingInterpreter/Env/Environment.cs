@@ -6,31 +6,49 @@ namespace CraftingInterpreter.Env;
 public class Environment(Environment? enclosing = null)
 {
     private readonly Dictionary<string, object?> _values = new();
+    private Environment? Enclosing { get; } = enclosing;
 
     public void Define(string name, object? value)
     {
-        // Explicitly allow redeclaration in global scope for repl convenience
-        // Not sure if this is appropriate, but a small interpreted language like this
-        // I think it brings more benefits than harm i guess
-        if (enclosing == null)
+        _values[name] = value;
+    }
+
+    public object? GetAt(int distance, string name)
+    {
+        var ancestor = Ancestor(distance);
+        if (!ancestor._values.TryGetValue(name, out var value))
         {
-            _values[name] = value;
-            return;
+            throw new RuntimeError($"Static resolution error: Variable '{name}' not found at depth {distance}.");
+        }
+        return value;
+    }
+
+    public void AssignAt(int distance, Token name, object? value)
+    {
+        Ancestor(distance)._values[name.Lexeme] = value;
+    }
+
+    private Environment Ancestor(int distance)
+    {
+        var environment = this;
+
+        for (var i = 0; i < distance; i++)
+        {
+            environment = environment.Enclosing!;
         }
 
-        if (!_values.TryAdd(name, value))
-            throw new RuntimeError("Redeclaration of declared variable.");
+        return environment;
     }
 
     public object? Get(Token name)
     {
-        if (_values.TryGetValue(name.Lexeme, out var value))
+        if (_values.ContainsKey(name.Lexeme))
         {
-            return value;
+            return _values.GetValueOrDefault(name.Lexeme);
         }
 
-        if (enclosing != null)
-            return enclosing.Get(name);
+        if (Enclosing != null)
+            return Enclosing.Get(name);
 
         throw new RuntimeError($"Undefined variable {name.Lexeme}.", name);
     }
@@ -43,9 +61,9 @@ public class Environment(Environment? enclosing = null)
             return;
         }
 
-        if (enclosing != null)
+        if (Enclosing != null)
         {
-            enclosing.Assign(name, value);
+            Enclosing.Assign(name, value);
             return;
         }
 

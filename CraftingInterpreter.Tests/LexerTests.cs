@@ -53,8 +53,7 @@ public class LexerTests
 
         var expectedToken = new List<TokenType>()
         {
-            TokenType.LessEqual,
-            TokenType.EqualEqual,
+            TokenType.LessEqual, TokenType.EqualEqual,
             TokenType.BangEqual,
             TokenType.Eof
         };

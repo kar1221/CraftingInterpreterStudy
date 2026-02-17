@@ -66,10 +66,11 @@ public abstract class Stmt
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitIfStmt(this);
     }
 
-    public class While(Expr @condition, Stmt @body) : Stmt
+    public class While(Expr @condition, Stmt @body, Expr? @increment = null) : Stmt
     {
         public Expr Condition { get; } = @condition;
         public Stmt Body { get; } = @body;
+        public Expr? Increment { get; } = @increment;
 
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitWhileStmt(this);
     }
@@ -89,13 +90,13 @@ public abstract class Stmt
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitForIncrementStmt(this);
     }
 
-    public class Break() : Stmt
+    public class Break : Stmt
     {
 
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitBreakStmt(this);
     }
 
-    public class Continue() : Stmt
+    public class Continue : Stmt
     {
 
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitContinueStmt(this);

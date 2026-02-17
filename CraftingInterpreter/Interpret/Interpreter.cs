@@ -10,18 +10,19 @@ namespace CraftingInterpreter.Interpret;
 public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
 {
     private Environment _environment;
-    public readonly Environment Globals;
+    private readonly Environment _globals;
     private readonly Action<string>? _writer;
+    private readonly Dictionary<Expr, int> _locals = new();
 
     public Interpreter(Action<string>? writer = null)
     {
-        Globals = new Environment();
-        _environment = Globals;
+        _globals = new Environment();
+        _environment = _globals;
         _writer = writer;
 
-        Globals.Define("clock", new Clock());
-        Globals.Define("time", new Time());
-        Globals.Define("date", new Date());
+        _globals.Define("clock", new Clock());
+        _globals.Define("time", new Time());
+        _globals.Define("date", new Date());
     }
 
     public void InterpretSingle(Expr expression)
@@ -48,12 +49,26 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         }
     }
 
+    public void Resolve(Expr expr, int depth)
+    {
+        _locals[expr] = depth;
+    }
+
     #region Expression Ast
 
     public object? VisitAssignExpr(Expr.Assign expr)
     {
         var value = Evaluate(expr.Value);
-        _environment.Assign(expr.Name, value);
+
+        if (_locals.TryGetValue(expr, out var distance))
+        {
+            _environment.AssignAt(distance, expr.Name, value);
+        }
+        else
+        {
+            _globals.Assign(expr.Name, value);
+        }
+        
         return value;
     }
 
@@ -187,14 +202,19 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         return Evaluate(expression.Right);
     }
 
-    public object VisitVariableExpr(Expr.Variable expr)
+    public object? VisitVariableExpr(Expr.Variable expr)
     {
-        var variable = _environment.Get(expr.Name);
+        return LookUpVariable(expr.Name, expr);
+    }
 
-        if (variable == null)
-            throw new RuntimeError("Attempt to access uninitialized variable.", expr.Name);
-
-        return variable;
+    private object? LookUpVariable(Token name, Expr expr)
+    {
+        if (_locals.TryGetValue(expr, out var distance))
+        {
+            return _environment.GetAt(distance, name.Lexeme);
+        }
+    
+        return _globals.Get(name);
     }
 
     public object VisitLambdaExpr(Expr.Lambda expr)
@@ -350,18 +370,14 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
                 try
                 {
                     Execute(stmt.Body);
+                    
+                    if(stmt.Increment != null)
+                        Evaluate(stmt.Increment);
                 }
                 catch (Continue)
                 {
-                    if (stmt.Body is Stmt.Block { Statements.Count: > 0 } block)
-                    {
-                        var last = block.Statements[^1];
-
-                        if (last is Stmt.ForIncrement forIncrement)
-                        {
-                            Evaluate(forIncrement.IncrementExpr);
-                        }
-                    }
+                    if(stmt.Increment != null)
+                        Evaluate(stmt.Increment);
                 }
             }
         }

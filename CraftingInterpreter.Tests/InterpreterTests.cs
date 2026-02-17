@@ -57,7 +57,7 @@ public class InterpreterTests
               }
               print a;
               """,
-        "3\n1")
+        "Cannot read local variable in its own initializer.")
     ]
     [TestCase("""
               var a = 1;
@@ -69,7 +69,7 @@ public class InterpreterTests
               }
               print a;
               """,
-        "2\n4\n2")
+        "Cannot read local variable in its own initializer.")
     ]
     [TestCase("""
               var a = 1;
@@ -78,7 +78,7 @@ public class InterpreterTests
                 var a = 3;
               }
               """,
-            "Redeclaration of declared variable.") // Throws
+            "Already a variable with this name in this scope.") // Throws
     ]
     [TestCase("""
               var a = 1;

@@ -516,14 +516,9 @@ public class Parser(List<Token> tokens)
 
         var body = Statement();
 
-        if (increment != null)
-        {
-            body = new Stmt.Block([body, new Stmt.ForIncrement(increment)]);
-        }
-
         condition ??= new Expr.Literal(true);
 
-        body = new Stmt.While(condition, body);
+        body = new Stmt.While(condition, body, increment);
 
         if (initializer != null)
             body = new Stmt.Block([initializer, body]);

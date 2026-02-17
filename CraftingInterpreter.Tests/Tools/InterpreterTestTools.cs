@@ -2,6 +2,7 @@ using CraftingInterpreter.Interpret;
 using CraftingInterpreter.Interpret.Errors;
 using CraftingInterpreter.Lexing;
 using CraftingInterpreter.Parsing;
+using CraftingInterpreter.Resolution;
 
 namespace CraftingInterpreter.Tests.Tools;
 
@@ -13,24 +14,26 @@ public static class InterpreterTestTools
         string? runtimeErrorMessage = null;
         var parseError = false;
 
+        var interpreter = new Interpreter(output.Add);
+
         try
         {
             var lexer = new Lexer(input);
             var tokens = lexer.ScanTokens();
             var parser = new Parser(tokens);
+            var resolver = new Resolver(interpreter);
 
             if (isExpression)
             {
                 var expr = parser.ParseSingle();
+                resolver.Resolve(expr);
                 if (expr == null) return new InterpreterResult("", HadParseError: true);
-
-                var interpreter = new Interpreter(s => output.Add(s));
                 interpreter.InterpretSingle(expr);
             }
             else
             {
                 var statements = parser.Parse();
-                var interpreter = new Interpreter(output.Add);
+                resolver.Resolve(statements);
                 interpreter.Interpret(statements);
             }
         }
@@ -40,7 +43,7 @@ public static class InterpreterTestTools
         }
         catch (Exception ex)
         {
-            runtimeErrorMessage = $"Unexpected System Exception: {ex.Message}";
+            runtimeErrorMessage = ex.Message;
         }
 
         return new InterpreterResult(string.Join("\n", output), runtimeErrorMessage, parseError);

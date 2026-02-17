@@ -30,7 +30,7 @@ DefineAst(outputDirectory, "Stmt", [
     "Print : Expr expr",
     "Var : Token name, Expr? initializer",
     "If : Expr condition, Stmt thenBranch, Stmt? elseBranch",
-    "While : Expr condition, Stmt body",
+    "While : Expr condition, Stmt body, Expr? ?increment",
     "Return: Token keyword, Expr? value",
     "ForIncrement : Expr incrementExpr",
     "Break :",
@@ -79,16 +79,31 @@ static void DefineType(TextWriter writer, string baseName, string className, str
     var parameters = fields.Select(f =>
     {
         var parts = f.Split(" ");
-        return $"{parts[0]} @{parts[1]}";
+        var type = parts[0];
+        var name = parts[1];
+        var defaultValue = "";
+
+        if (name.StartsWith('?'))
+        {
+            name = name.TrimStart('?');
+            defaultValue = " = null";
+        }
+        
+        return $"{type} @{name}{defaultValue}";
     }).ToList();
 
-    writer.WriteLine($"    public class {className}({string.Join(", ", parameters)}) : {baseName}");
+    var constructorArgs = parameters.Count > 0 ? $"({string.Join(", ", parameters)})" : "";
+
+    writer.WriteLine($"    public class {className}{constructorArgs} : {baseName}");
     writer.WriteLine("    {");
 
     foreach (var field in fields)
     {
         var parts = field.Split(" ");
-        writer.WriteLine($"        public {parts[0]} {parts[1].Capitalize()} {{ get; }} = @{parts[1]};");
+        var type = parts[0];
+        var name = parts[1].TrimStart('?');
+        
+        writer.WriteLine($"        public {type} {name.Capitalize()} {{ get; }} = @{name};");
     }
 
     writer.WriteLine();
