@@ -40,6 +40,16 @@ public class LoxCallable(List<Token> parameters, List<Stmt> body, Environment cl
         return null;
     }
 
+    public LoxCallable Bind(LoxInstance instance)
+    {
+        var environment = new Environment(closure);
+        environment.Define("this", instance);
+
+        var declaration = new Stmt.Function(name!, parameters, body);
+
+        return new LoxCallable(declaration, environment);
+    }
+
     public override string ToString()
     {
         return $"<fn {name?.Lexeme ?? "Anonymous"}>";

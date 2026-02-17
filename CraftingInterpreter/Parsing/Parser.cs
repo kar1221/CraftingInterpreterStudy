@@ -9,7 +9,7 @@ namespace CraftingInterpreter.Parsing;
 /*
  * Expression -> Comma ;
  * Comma -> Assignment ( "," Assignment )* ;
- * Assignment -> ( IDENTIFIER ( "=" | "+=" | "-=" | "*=" | "/=" ) Assignment ) | Conditional ;
+ * Assignment -> ( ( Call "." )? IDENTIFIER ( "=" | "+=" | "-=" | "*=" | "/=" ) Assignment ) | Conditional ;
  * Conditional -> LogicOr ( "?" Expression ":" Conditional )? ;
  * LogicOr -> LogicAnd ( "or" LogicAnd )* ;
  * LogicAnd -> Equality ( "and" Equality )* ;
@@ -19,7 +19,7 @@ namespace CraftingInterpreter.Parsing;
  * Factor -> Unary ( ( "/" | "*" | "%" ) Unary )* ;
  * Unary -> ( "!" | "-" | ) Unary | Call | ErrorBinary ;
  * ErrorBinary -> ( "," | "?" | "==" | "!=" | "<" | "<=" | ">" | ">=" | "+" | "*" | "/" ) Expression ;
- * Call -> Primary ( "(" Arguments? ")" )* ;
+ * Call -> Primary ( "(" Arguments? ")" | "." IDENTIFIER )* ;
  * Argument -> Assignment ( "," Expression )* ;
  * Primary -> NUMBER | STRING | "true" | "false" | "nil" | "{" Expression "}" | IDENTIFIER | Lambda;
  * Lambda -> "fun" "(" Parameters? ")" Block | "(" Parameters ")" => ( Block | Expression )
@@ -102,15 +102,22 @@ public class Parser(List<Token> tokens)
         var op = Previous();
         var value = Assignment();
 
+        if (expr is Expr.Get get)
+        {
+            return new Expr.Set(get.Object, get.Name, value);
+        }
+        
         if (expr is not Expr.Variable v)
             throw Error(op, "Invalid assignment target.");
 
         var name = v.Name;
 
+        
         if (op.Type == TokenType.Equal)
         {
             return new Expr.Assign(name, value);
-        }
+        } 
+        
 
         var binaryType = op.Type switch
         {
@@ -252,9 +259,19 @@ public class Parser(List<Token> tokens)
         while (true)
         {
             if (Match(TokenType.LeftParen))
+            {
                 expr = FinishCall(expr);
+            }
+            else if (Match(TokenType.Dot))
+            {
+                var name = Consume(TokenType.Identifier, "Expect property name after '.'.");
+                expr = new Expr.Get(expr, name);
+            }
             else
+            {
                 break;
+            }
+
         }
 
         return expr;
@@ -288,6 +305,7 @@ public class Parser(List<Token> tokens)
         if (Match(TokenType.False)) return new Expr.Literal(false);
         if (Match(TokenType.True)) return new Expr.Literal(true);
         if (Match(TokenType.Nil)) return new Expr.Literal(null);
+        if (Match(TokenType.This)) return new Expr.This(Previous());
         if (Match(TokenType.Number, TokenType.String)) return new Expr.Literal(Previous().Literal);
         if (Match(TokenType.Identifier))
             return new Expr.Variable(Previous());

@@ -145,6 +145,18 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         return function.Call(this, arguments);
     }
 
+    public object? VisitGetExpr(Expr.Get expr)
+    {
+        var @object = Evaluate(expr.Object);
+
+        if (@object is LoxInstance instance)
+        {
+            return instance.Get(expr.Name);
+        }
+
+        throw new RuntimeError("Only instances have properties.", expr.Name);
+    }
+
     public object? VisitGroupingExpr(Expr.Grouping expression)
     {
         return Evaluate(expression.Expression);
@@ -171,6 +183,25 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         }
 
         return Evaluate(expr.Right);
+    }
+
+    public object? VisitThisExpr(Expr.This expr)
+    {
+        return LookUpVariable(expr.Keyword, expr);
+    }
+
+    public object? VisitSetExpr(Expr.Set expr)
+    {
+        var ob = Evaluate(expr.Object);
+
+        if (ob is not LoxInstance instance)
+            throw new RuntimeError("Only instance have fields.", expr.Name);
+
+        var value = Evaluate(expr.Value);
+        
+        instance.Set(expr.Name, value);
+
+        return value;
     }
 
     public object? VisitUnaryExpr(Expr.Unary expression)
@@ -307,7 +338,16 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
     public object? VisitClassStmt(Stmt.Class stmt)
     {
         _environment.Define(stmt.Name.Lexeme, null);
-        var @class = new LoxClass(stmt.Name.Lexeme);
+
+        var methods = new Dictionary<string, LoxCallable>();
+        
+        foreach (var method in stmt.Methods)
+        {
+            var function = new LoxCallable(method, _environment);
+            methods[method.Name.Lexeme] = function;
+        }
+        
+        var @class = new LoxClass(stmt.Name.Lexeme, methods);
         _environment.Assign(stmt.Name, @class);
         return null;
     }

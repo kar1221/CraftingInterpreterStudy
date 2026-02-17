@@ -211,13 +211,13 @@ public class InterpreterTests
     {
         AssertStatement(input, expected);
     }
-    
-    
+
+
     [TestCase("""
               fun add(a, b) {
                 print a + b;
               }
-              
+
               add(1, 2);
               """, "3")]
     [TestCase("""
@@ -257,7 +257,7 @@ public class InterpreterTests
     {
         AssertStatement(input, expected);
     }
-    
+
     [TestCase("""
               fun do_something(fn) {
                 var i = 2;
@@ -275,6 +275,23 @@ public class InterpreterTests
               do_something((i) => { print i; });
               """, "2")]
     public void Interpreter_Lambdas(string input, string expected)
+    {
+        AssertStatement(input, expected);
+    }
+
+
+    [TestCase("""
+              class Cake {
+                  taste() {
+                      var adjective = "delicious";
+                      print "The " + this.flavor + " cake is " + adjective + "!";
+                  }
+              }
+              var cake = Cake();
+              cake.flavor = "German chocolate";
+              cake.taste(); 
+              """, "German chocolate\nThe German chocolate cake is delicious!")]
+    public void Interpreter_Class(string input, string expected)
     {
         AssertStatement(input, expected);
     }

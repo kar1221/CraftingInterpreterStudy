@@ -9,9 +9,12 @@ public abstract class Expr
         T? VisitAssignExpr(Assign expr);
         T? VisitBinaryExpr(Binary expr);
         T? VisitCallExpr(Call expr);
+        T? VisitGetExpr(Get expr);
         T? VisitGroupingExpr(Grouping expr);
         T? VisitLiteralExpr(Literal expr);
         T? VisitLogicalExpr(Logical expr);
+        T? VisitThisExpr(This expr);
+        T? VisitSetExpr(Set expr);
         T? VisitUnaryExpr(Unary expr);
         T? VisitTernaryExpr(Ternary expr);
         T? VisitCommaExpr(Comma expr);
@@ -45,6 +48,14 @@ public abstract class Expr
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitCallExpr(this);
     }
 
+    public class Get(Expr @object, Token @name) : Expr
+    {
+        public Expr Object { get; } = @object;
+        public Token Name { get; } = @name;
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitGetExpr(this);
+    }
+
     public class Grouping(Expr @expression) : Expr
     {
         public Expr Expression { get; } = @expression;
@@ -66,6 +77,22 @@ public abstract class Expr
         public Expr Right { get; } = @right;
 
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitLogicalExpr(this);
+    }
+
+    public class This(Token @keyword) : Expr
+    {
+        public Token Keyword { get; } = @keyword;
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitThisExpr(this);
+    }
+
+    public class Set(Expr @object, Token @name, Expr? @value) : Expr
+    {
+        public Expr Object { get; } = @object;
+        public Token Name { get; } = @name;
+        public Expr? Value { get; } = @value;
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitSetExpr(this);
     }
 
     public class Unary(Token @operator, Expr @right) : Expr

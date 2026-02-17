@@ -118,6 +118,12 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         return null;
     }
 
+    public object? VisitGetExpr(Expr.Get expr)
+    {
+        Resolve(expr.Object);
+        return null;
+    }
+
     public object? VisitGroupingExpr(Expr.Grouping expr)
     {
         Resolve(expr.Expression);
@@ -133,6 +139,19 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
     {
         Resolve(expr.Left);
         Resolve(expr.Right);
+        return null;
+    }
+
+    public object? VisitThisExpr(Expr.This expr)
+    {
+        ResolveLocal(expr, expr.Keyword);
+        return null;
+    }
+
+    public object? VisitSetExpr(Expr.Set expr)
+    {
+        Resolve(expr.Value);
+        Resolve(expr.Object);
         return null;
     }
 
@@ -202,6 +221,18 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
     {
         Declare(stmt.Name);
         Define(stmt.Name);
+        
+        BeginScope();
+        _scopes.Peek()["this"] = true;
+
+        foreach (var method in stmt.Methods)
+        {
+            const FunctionType declaration = FunctionType.Method;
+            ResolveFunction(method, declaration);
+        }
+        
+        EndScope();
+        
         return null;
     }
 
@@ -284,5 +315,6 @@ internal enum FunctionType
 {
     None,
     Function,
-    Lambda
+    Lambda,
+    Method
 }

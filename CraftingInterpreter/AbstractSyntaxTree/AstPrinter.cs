@@ -26,6 +26,11 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
         return Parenthesize("Call", expr);
     }
 
+    public string VisitGetExpr(Expr.Get expr)
+    {
+        return Parenthesize("get", expr);
+    }
+
     public string VisitGroupingExpr(Expr.Grouping expression)
     {
         return Parenthesize("group", expression.Expression);
@@ -42,6 +47,16 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
     public string VisitLogicalExpr(Expr.Logical expr)
     {
         return Parenthesize("logical", expr);
+    }
+
+    public string? VisitThisExpr(Expr.This expr)
+    {
+        return Parenthesize("this");
+    }
+
+    public string? VisitSetExpr(Expr.Set expr)
+    {
+        return Parenthesize("set", expr);
     }
 
     public string VisitUnaryExpr(Expr.Unary expression)
