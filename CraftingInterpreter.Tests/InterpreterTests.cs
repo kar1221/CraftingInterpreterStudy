@@ -299,6 +299,14 @@ public class InterpreterTests
               }
               var cake = Cake();
               """, "Init invoked")]
+    [TestCase("""
+              class Math {
+                   class square(n) {
+                        return n * n;
+                   }
+              }
+              print Math.square(2);
+              """, "4")]
     public void Interpreter_Class(string input, string expected)
     {
         AssertStatement(input, expected);

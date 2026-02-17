@@ -3,17 +3,17 @@ using CraftingInterpreter.TokenModels;
 
 namespace CraftingInterpreter.Interpret.BuiltIn;
 
-public class LoxInstance(LoxClass @class)
+public class LoxInstance(LoxClass? @class)
 {
     private readonly Dictionary<string, object?> _fields = new();
-    public override string ToString() => $"{@class.Name} instance";
+    public override string ToString() => $"{@class?.Name} instance";
 
-    public object? Get(Token name)
+    public virtual object? Get(Token name)
     {
         if (_fields.TryGetValue(name.Lexeme, out var value))
             return value;
 
-        var method = @class.FindMethod(name.Lexeme);
+        var method = @class?.FindMethod(name.Lexeme);
 
         if (method != null)
             return method.Bind(this);

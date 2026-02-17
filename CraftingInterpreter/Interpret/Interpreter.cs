@@ -340,14 +340,21 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         _environment.Define(stmt.Name.Lexeme, null);
 
         var methods = new Dictionary<string, LoxCallable>();
+        var staticMethods = new Dictionary<string, LoxCallable>();
         
         foreach (var method in stmt.Methods)
         {
             var function = new LoxCallable(method, _environment, method.Name.Lexeme == "init");
             methods[method.Name.Lexeme] = function;
         }
+
+        foreach (var staticMethod in stmt.StaticMethods)
+        {
+            var function = new LoxCallable(staticMethod, _environment, false);
+            staticMethods[staticMethod.Name.Lexeme] = function;
+        }
         
-        var @class = new LoxClass(stmt.Name.Lexeme, methods);
+        var @class = new LoxClass(stmt.Name.Lexeme, methods, staticMethods);
         _environment.Assign(stmt.Name, @class);
         return null;
     }

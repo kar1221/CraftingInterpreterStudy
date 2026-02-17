@@ -26,10 +26,11 @@ public abstract class Stmt
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitBlockStmt(this);
     }
 
-    public class Class(Token @name, List<Stmt.Function> @methods) : Stmt
+    public class Class(Token @name, List<Stmt.Function> @methods, List<Stmt.Function> @staticMethods) : Stmt
     {
         public Token Name { get; } = @name;
         public List<Stmt.Function> Methods { get; } = @methods;
+        public List<Stmt.Function> StaticMethods { get; } = @staticMethods;
 
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitClassStmt(this);
     }

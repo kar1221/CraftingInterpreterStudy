@@ -235,10 +235,17 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
         foreach (var method in stmt.Methods)
         {
-            FunctionType declaration = FunctionType.Method;
+            var declaration = FunctionType.Method;
 
             if (method.Name.Lexeme == "init")
                 declaration = FunctionType.Initializer;
+            
+            ResolveFunction(method, declaration);
+        }
+        
+        foreach (var method in stmt.StaticMethods)
+        {
+            var declaration = FunctionType.Method;
             
             ResolveFunction(method, declaration);
         }
