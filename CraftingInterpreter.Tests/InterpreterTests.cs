@@ -291,6 +291,14 @@ public class InterpreterTests
               cake.flavor = "German chocolate";
               cake.taste(); 
               """, "German chocolate\nThe German chocolate cake is delicious!")]
+    [TestCase("""
+              class Cake {
+                  init() {
+                      print "Init invoked";
+                  }
+              }
+              var cake = Cake();
+              """, "Init invoked")]
     public void Interpreter_Class(string input, string expected)
     {
         AssertStatement(input, expected);

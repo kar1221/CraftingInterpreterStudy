@@ -9,15 +9,18 @@ namespace CraftingInterpreter.Interpret.BuiltIn;
 public class LoxCallable(List<Token> parameters, List<Stmt> body, Environment closure, Token? name = null)
     : ICallable
 {
+    private bool _isInitializer;
+    
     public int Arity()
     {
         return parameters.Count;
     }
 
-    public LoxCallable(Stmt.Function declaration, Environment closure) :
+    public LoxCallable(Stmt.Function declaration, Environment closure, bool isInitializer) :
         this(declaration.Params, declaration.Body,
             closure, declaration.Name)
     {
+        this._isInitializer = isInitializer;
     }
 
     public object? Call(Interpreter interpreter, List<object> arguments)
@@ -34,7 +37,15 @@ public class LoxCallable(List<Token> parameters, List<Stmt> body, Environment cl
         }
         catch (Return returnValue)
         {
+            if (_isInitializer)
+                return closure.GetAt(0, "this");
+            
             return returnValue.Value;
+        }
+
+        if (_isInitializer)
+        {
+            return closure.GetAt(0, "this");
         }
 
         return null;
@@ -47,7 +58,7 @@ public class LoxCallable(List<Token> parameters, List<Stmt> body, Environment cl
 
         var declaration = new Stmt.Function(name!, parameters, body);
 
-        return new LoxCallable(declaration, environment);
+        return new LoxCallable(declaration, environment, _isInitializer);
     }
 
     public override string ToString()

@@ -343,7 +343,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         
         foreach (var method in stmt.Methods)
         {
-            var function = new LoxCallable(method, _environment);
+            var function = new LoxCallable(method, _environment, method.Name.Lexeme == "init");
             methods[method.Name.Lexeme] = function;
         }
         
@@ -360,7 +360,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
 
     public object? VisitFunctionStmt(Stmt.Function stmt)
     {
-        var function = new LoxCallable(stmt, _environment);
+        var function = new LoxCallable(stmt, _environment, false);
         _environment.Define(stmt.Name.Lexeme, function);
         return null;
     }

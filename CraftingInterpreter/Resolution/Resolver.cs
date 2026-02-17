@@ -235,7 +235,11 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
         foreach (var method in stmt.Methods)
         {
-            const FunctionType declaration = FunctionType.Method;
+            FunctionType declaration = FunctionType.Method;
+
+            if (method.Name.Lexeme == "init")
+                declaration = FunctionType.Initializer;
+            
             ResolveFunction(method, declaration);
         }
         
@@ -303,9 +307,14 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
     {
         if (_currentFunction == FunctionType.None)
             throw new ResolutionError(stmt.Keyword, "Cannot return from top-level code");
-        
+
         if (stmt.Value != null)
+        {
+            if (_currentFunction == FunctionType.Initializer)
+                throw new RuntimeError("Can't return value from an initializer.", stmt.Keyword);
+            
             Resolve(stmt.Value);
+        }
 
         return null;
     }
@@ -326,7 +335,8 @@ internal enum FunctionType
     None,
     Function,
     Lambda,
-    Method
+    Method,
+    Initializer
 }
 
 internal enum ClassType

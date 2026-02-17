@@ -18,30 +18,20 @@ public static class Lox
 
     public static void Run(string[] args)
     {
-        // switch (args.Length)
-        // {
-        //     case > 1:
-        //         Console.WriteLine("Usage: jlox [script]");
-        //         Environment.Exit(64);
-        //         break;
-        //     case 1:
-        //         RunFile(args[0]);
-        //         break;
-        //     default:
-        //         RunPrompt();
-        //         break;
-        // }
+        switch (args.Length)
+        {
+            case > 1:
+                Console.WriteLine("Usage: jlox [script]");
+                Environment.Exit(64);
+                break;
+            case 1:
+                RunFile(args[0]);
+                break;
+            default:
+                RunPrompt();
+                break;
+        }
 
-        RunCommand("""
-                   class Cake {
-                   taste() {
-                   var adjective = "delicious";
-                   print "The " + this.flavor + " cake is " + adjective + "!";
-                   }
-                   }
-                   var cake = Cake();
-                   cake.taste();
-                   """);
     }
 
     private static void RunFile(string path)
