@@ -1,5 +1,6 @@
 using CraftingInterpreter.AbstractSyntaxTree;
 using CraftingInterpreter.Interpret;
+using CraftingInterpreter.Interpret.Errors;
 using CraftingInterpreter.Resolution.Errors;
 using CraftingInterpreter.TokenModels;
 
@@ -8,7 +9,8 @@ namespace CraftingInterpreter.Resolution;
 public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IVisitor<object?>
 {
     private readonly Stack<Dictionary<string, bool>> _scopes = new();
-    private FunctionType _currentType = FunctionType.None;
+    private FunctionType _currentFunction = FunctionType.None;
+    private ClassType _currentClass = ClassType.None;
 
     public void Resolve(List<Stmt> statements)
     {
@@ -44,8 +46,8 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
     private void ResolveFunction(Stmt.Function function, FunctionType functionType)
     {
-        var enclosingFunction = _currentType;
-        _currentType = functionType;
+        var enclosingFunction = _currentFunction;
+        _currentFunction = functionType;
         
         BeginScope();
         foreach (var parameter in function.Params)
@@ -57,7 +59,7 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         Resolve(function.Body);
         EndScope();
 
-        _currentType = enclosingFunction;
+        _currentFunction = enclosingFunction;
     }
 
     private void BeginScope()
@@ -144,6 +146,9 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
     public object? VisitThisExpr(Expr.This expr)
     {
+        if (_currentClass == ClassType.None)
+            throw new RuntimeError("Cannot use 'this' outside of class.", expr.Keyword);
+        
         ResolveLocal(expr, expr.Keyword);
         return null;
     }
@@ -178,8 +183,8 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
     public object? VisitLambdaExpr(Expr.Lambda expr)
     {
-        var enclosingFunction = _currentType;
-        _currentType = FunctionType.Lambda;
+        var enclosingFunction = _currentFunction;
+        _currentFunction = FunctionType.Lambda;
         
         BeginScope();
 
@@ -193,7 +198,7 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
         EndScope();
 
-        _currentType = enclosingFunction;
+        _currentFunction = enclosingFunction;
         
         return null;
     }
@@ -219,6 +224,9 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
     public object? VisitClassStmt(Stmt.Class stmt)
     {
+        var enclosingClass = _currentClass;
+        _currentClass = ClassType.Class;
+        
         Declare(stmt.Name);
         Define(stmt.Name);
         
@@ -232,6 +240,8 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         }
         
         EndScope();
+
+        _currentClass = enclosingClass;
         
         return null;
     }
@@ -291,7 +301,7 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
     public object? VisitReturnStmt(Stmt.Return stmt)
     {
-        if (_currentType == FunctionType.None)
+        if (_currentFunction == FunctionType.None)
             throw new ResolutionError(stmt.Keyword, "Cannot return from top-level code");
         
         if (stmt.Value != null)
@@ -317,4 +327,10 @@ internal enum FunctionType
     Function,
     Lambda,
     Method
+}
+
+internal enum ClassType
+{
+    None,
+    Class
 }
