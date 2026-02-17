@@ -151,7 +151,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
 
         if (@object is LoxInstance instance)
         {
-            return instance.Get(expr.Name);
+            return instance.Get(expr.Name, this);
         }
 
         throw new RuntimeError("Only instances have properties.", expr.Name);
@@ -344,13 +344,13 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         
         foreach (var method in stmt.Methods)
         {
-            var function = new LoxCallable(method, _environment, method.Name.Lexeme == "init");
+            var function = new LoxCallable(method, _environment, method.Name.Lexeme == "init", method.IsGetter);
             methods[method.Name.Lexeme] = function;
         }
 
         foreach (var staticMethod in stmt.StaticMethods)
         {
-            var function = new LoxCallable(staticMethod, _environment, false);
+            var function = new LoxCallable(staticMethod, _environment, false, staticMethod.IsGetter);
             staticMethods[staticMethod.Name.Lexeme] = function;
         }
         
@@ -367,7 +367,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
 
     public object? VisitFunctionStmt(Stmt.Function stmt)
     {
-        var function = new LoxCallable(stmt, _environment, false);
+        var function = new LoxCallable(stmt, _environment, false, false);
         _environment.Define(stmt.Name.Lexeme, function);
         return null;
     }

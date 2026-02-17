@@ -10,17 +10,19 @@ public class LoxCallable(List<Token> parameters, List<Stmt> body, Environment cl
     : ICallable
 {
     private bool _isInitializer;
+    public bool IsGetter { get; }
     
     public int Arity()
     {
-        return parameters.Count;
+        return IsGetter ? 0 : parameters.Count;
     }
 
-    public LoxCallable(Stmt.Function declaration, Environment closure, bool isInitializer) :
+    public LoxCallable(Stmt.Function declaration, Environment closure, bool isInitializer, bool isGetter) :
         this(declaration.Params, declaration.Body,
             closure, declaration.Name)
     {
         this._isInitializer = isInitializer;
+        this.IsGetter = isGetter;
     }
 
     public object? Call(Interpreter interpreter, List<object> arguments)
@@ -58,7 +60,7 @@ public class LoxCallable(List<Token> parameters, List<Stmt> body, Environment cl
 
         var declaration = new Stmt.Function(name!, parameters, body);
 
-        return new LoxCallable(declaration, environment, _isInitializer);
+        return new LoxCallable(declaration, environment, _isInitializer , IsGetter);
     }
 
     public override string ToString()

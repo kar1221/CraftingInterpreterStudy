@@ -7,7 +7,8 @@ namespace CraftingInterpreter.Interpret.BuiltIn;
 public class LoxClass(
     string name,
     Dictionary<string, LoxCallable> methods,
-    Dictionary<string, LoxCallable> staticMethod)
+    Dictionary<string, LoxCallable> staticMethod
+)
     : LoxInstance(null), ICallable
 {
     public string Name { get; } = name;
@@ -25,7 +26,7 @@ public class LoxClass(
 
     private LoxCallable? FindStaticMethod(string name) => _staticMethod.GetValueOrDefault(name);
 
-    public override object? Get(Token name)
+    public override object? Get(Token name, Interpreter interpreter)
     {
         var method = FindStaticMethod(name.Lexeme);
 
@@ -34,7 +35,7 @@ public class LoxClass(
 
         try
         {
-            return base.Get(name);
+            return base.Get(name, interpreter);
         }
         catch (RuntimeError)
         {

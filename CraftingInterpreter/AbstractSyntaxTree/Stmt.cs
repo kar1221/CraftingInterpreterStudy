@@ -42,11 +42,12 @@ public abstract class Stmt
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitExpressionStmt(this);
     }
 
-    public class Function(Token @name, List<Token> @params, List<Stmt> @body) : Stmt
+    public class Function(Token @name, List<Token> @params, List<Stmt> @body, bool @isGetter = false) : Stmt
     {
         public Token Name { get; } = @name;
         public List<Token> Params { get; } = @params;
         public List<Stmt> Body { get; } = @body;
+        public bool IsGetter { get; } = @isGetter;
 
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitFunctionStmt(this);
     }

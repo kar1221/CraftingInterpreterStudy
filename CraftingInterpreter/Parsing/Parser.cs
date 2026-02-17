@@ -28,6 +28,7 @@ namespace CraftingInterpreter.Parsing;
 /*
  * Program -> Declaration* EOF ;
  * Declaration -> VarDeclaration | Statement | FuncDeclaration;
+ * ClassDeclaration -> "class" IDENTIFIER "{" ( ("class"? function) | IDENTIFIER Block)* "}" ;
  * FuncDeclaration -> "fun" Function;
  * Function -> IDENTIFIER "(" Parameters? ")" Block ;
  * Parameters -> IDENTIFIER ( "," IDENTIFIER )* ;
@@ -106,18 +107,18 @@ public class Parser(List<Token> tokens)
         {
             return new Expr.Set(get.Object, get.Name, value);
         }
-        
+
         if (expr is not Expr.Variable v)
             throw Error(op, "Invalid assignment target.");
 
         var name = v.Name;
 
-        
+
         if (op.Type == TokenType.Equal)
         {
             return new Expr.Assign(name, value);
-        } 
-        
+        }
+
 
         var binaryType = op.Type switch
         {
@@ -271,7 +272,6 @@ public class Parser(List<Token> tokens)
             {
                 break;
             }
-
         }
 
         return expr;
@@ -563,14 +563,30 @@ public class Parser(List<Token> tokens)
     {
         var name = Consume(TokenType.Identifier, $"Expect {kind} name");
 
-        Consume(TokenType.LeftParen, $"Expect '(' after {kind} name.");
+        var parameters = new List<Token>();
+        var isGetter = false;
+        
+        if (Match(TokenType.LeftParen))
+        {
+            if (!Check(TokenType.RightParen))
+            {
+                do
+                {
+                    if (parameters.Count >= 255)
+                        Error(Peek(), "Can't have more than 255 parameters.");
+                    parameters.Add(Consume(TokenType.Identifier, "Expect parameter name."));
+                } while (Match(TokenType.Comma));
+            }
+            Consume(TokenType.RightParen, "Expect ')' after parameters.");
+        }
+        else
+        {
+            isGetter = true;
+        }
 
-        var parameters = Parameter();
-
-        Consume(TokenType.LeftBrace, $"Expect '{{' before {kind} body.");
-
+        Consume(TokenType.LeftBrace, $"Expect {{ before {kind} body");
         var body = Block();
-        return new Stmt.Function(name, parameters, body);
+        return new Stmt.Function(name, parameters, body, isGetter);
     }
 
     private Stmt.Break BreakStatement()
@@ -592,7 +608,7 @@ public class Parser(List<Token> tokens)
         {
             if (Match(TokenType.Class))
                 return ClassDeclaration();
-            
+
             if (Match(TokenType.Fun))
                 return Function("function");
 

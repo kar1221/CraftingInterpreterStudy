@@ -30,11 +30,11 @@ DefineAst(outputDirectory, "Stmt", [
     "Block : List<Stmt> statements",
     "Class : Token name, List<Stmt.Function> methods, List<Stmt.Function> staticMethods",
     "Expression : Expr expr",
-    "Function : Token name, List<Token> params, List<Stmt> body",
+    "Function : Token name, List<Token> params, List<Stmt> body, bool isGetter = false",
     "Print : Expr expr",
     "Var : Token name, Expr? initializer",
     "If : Expr condition, Stmt thenBranch, Stmt? elseBranch",
-    "While : Expr condition, Stmt body, Expr? ?increment",
+    "While : Expr condition, Stmt body, Expr? increment = null",
     "Return: Token keyword, Expr? value",
     "Break :",
     "Continue :"
@@ -79,33 +79,41 @@ static void DefineType(TextWriter writer, string baseName, string className, str
         .Where(f => !string.IsNullOrWhiteSpace(f))
         .ToList();
 
-    var parameters = fields.Select(f =>
+    var parameters = new List<string>();
+
+    foreach (var field in fields)
     {
-        var parts = f.Split(" ");
-        var type = parts[0];
-        var name = parts[1];
-        var defaultValue = "";
+        // Split default value if present
+        var partsWithDefault = field.Split("=", 2, StringSplitOptions.TrimEntries);
+        var declarationPart = partsWithDefault[0];
+        var defaultValue = partsWithDefault.Length > 1
+            ? " = " + partsWithDefault[1]
+            : "";
 
-        if (name.StartsWith('?'))
-        {
-            name = name.TrimStart('?');
-            defaultValue = " = null";
-        }
-        
-        return $"{type} @{name}{defaultValue}";
-    }).ToList();
+        // Split type and name
+        var declarationParts = declarationPart.Split(" ", 2, StringSplitOptions.TrimEntries);
+        var type = declarationParts[0];
+        var name = declarationParts[1];
 
-    var constructorArgs = parameters.Count > 0 ? $"({string.Join(", ", parameters)})" : "";
+        parameters.Add($"{type} @{name}{defaultValue}");
+    }
+
+    var constructorArgs = parameters.Count > 0
+        ? $"({string.Join(", ", parameters)})"
+        : "";
 
     writer.WriteLine($"    public class {className}{constructorArgs} : {baseName}");
     writer.WriteLine("    {");
 
     foreach (var field in fields)
     {
-        var parts = field.Split(" ");
-        var type = parts[0];
-        var name = parts[1].TrimStart('?');
-        
+        var partsWithDefault = field.Split("=", 2, StringSplitOptions.TrimEntries);
+        var declarationPart = partsWithDefault[0];
+
+        var declarationParts = declarationPart.Split(" ", 2, StringSplitOptions.TrimEntries);
+        var type = declarationParts[0];
+        var name = declarationParts[1];
+
         writer.WriteLine($"        public {type} {name.Capitalize()} {{ get; }} = @{name};");
     }
 
@@ -116,6 +124,8 @@ static void DefineType(TextWriter writer, string baseName, string className, str
     writer.WriteLine("    }");
     writer.WriteLine();
 }
+
+
 
 static void DefineVisitor(TextWriter writer, string baseName, List<string> types)
 {
