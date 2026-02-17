@@ -59,7 +59,7 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
         return Parenthesize(",", expression.Left, expression.Right);
     }
 
-    public string? VisitLambdaExpr(Expr.Lambda expr)
+    public string VisitLambdaExpr(Expr.Lambda expr)
     {
         return Parenthesize("lambda", expr.Body, expr.Params);
     }
@@ -100,12 +100,17 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
         return Parenthesize("block", [..stmt.Statements]);
     }
 
+    public string VisitClassStmt(Stmt.Class stmt)
+    {
+        return Parenthesize("class", stmt);
+    }
+
     public string VisitExpressionStmt(Stmt.Expression stmt)
     {
         return Parenthesize("expr", stmt.Expr);
     }
 
-    public string? VisitFunctionStmt(Stmt.Function stmt)
+    public string VisitFunctionStmt(Stmt.Function stmt)
     {
         return Parenthesize("Func", stmt);
     }
@@ -130,14 +135,9 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
         return Parenthesize("while", stmt.Condition, stmt.Body);
     }
 
-    public string? VisitReturnStmt(Stmt.Return stmt)
+    public string VisitReturnStmt(Stmt.Return stmt)
     {
         return Parenthesize("return", stmt.Keyword, stmt.Value);
-    }
-
-    public string VisitForIncrementStmt(Stmt.ForIncrement stmt)
-    {
-        return Parenthesize("increment", stmt.IncrementExpr);
     }
 
     public string VisitBreakStmt(Stmt.Break stmt)

@@ -1,6 +1,7 @@
 using CraftingInterpreter.Interpret;
 using CraftingInterpreter.Interpret.Errors;
 using CraftingInterpreter.Resolution;
+using CraftingInterpreter.Resolution.Errors;
 
 namespace CraftingInterpreter.LoxConsole;
 
@@ -69,9 +70,6 @@ public static class Lox
             var parser = new Parser(tokens);
             var statements = parser.Parse();
 
-            if (_hadError)
-                return;
-
             var resolver = new Resolver(Interpreter);
             resolver.Resolve(statements);
 
@@ -80,6 +78,10 @@ public static class Lox
         catch (RuntimeError e)
         {
             RuntimeError(e);
+        }
+        catch (ResolutionError e)
+        {
+            Error(e.Token, e.Message);
         }
     }
 

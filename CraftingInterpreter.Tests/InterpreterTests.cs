@@ -257,6 +257,27 @@ public class InterpreterTests
     {
         AssertStatement(input, expected);
     }
+    
+    [TestCase("""
+              fun do_something(fn) {
+                var i = 2;
+                fn(i);
+              }
+
+              do_something(fun (i) { print i; });
+              """, "2")]
+    [TestCase("""
+              fun do_something(fn) {
+                var i = 2;
+                fn(i);
+              }
+
+              do_something((i) => { print i; });
+              """, "2")]
+    public void Interpreter_Lambdas(string input, string expected)
+    {
+        AssertStatement(input, expected);
+    }
 
     private static void AssertExpression(string input, string expected)
     {

@@ -7,6 +7,7 @@ public abstract class Stmt
     public interface IVisitor<out T>
     {
         T? VisitBlockStmt(Block stmt);
+        T? VisitClassStmt(Class stmt);
         T? VisitExpressionStmt(Expression stmt);
         T? VisitFunctionStmt(Function stmt);
         T? VisitPrintStmt(Print stmt);
@@ -14,7 +15,6 @@ public abstract class Stmt
         T? VisitIfStmt(If stmt);
         T? VisitWhileStmt(While stmt);
         T? VisitReturnStmt(Return stmt);
-        T? VisitForIncrementStmt(ForIncrement stmt);
         T? VisitBreakStmt(Break stmt);
         T? VisitContinueStmt(Continue stmt);
     }
@@ -24,6 +24,14 @@ public abstract class Stmt
         public List<Stmt> Statements { get; } = @statements;
 
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitBlockStmt(this);
+    }
+
+    public class Class(Token @name, List<Stmt.Function> @methods) : Stmt
+    {
+        public Token Name { get; } = @name;
+        public List<Stmt.Function> Methods { get; } = @methods;
+
+        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitClassStmt(this);
     }
 
     public class Expression(Expr @expr) : Stmt
@@ -81,13 +89,6 @@ public abstract class Stmt
         public Expr? Value { get; } = @value;
 
         public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitReturnStmt(this);
-    }
-
-    public class ForIncrement(Expr @incrementExpr) : Stmt
-    {
-        public Expr IncrementExpr { get; } = @incrementExpr;
-
-        public override T? Accept<T>(IVisitor<T> visitor) where T : default => visitor.VisitForIncrementStmt(this);
     }
 
     public class Break : Stmt

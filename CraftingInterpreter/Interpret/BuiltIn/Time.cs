@@ -1,6 +1,6 @@
 using CraftingInterpreter.Interpret.Interfaces;
 
-namespace CraftingInterpreter.Interpret.BuiltInFn;
+namespace CraftingInterpreter.Interpret.BuiltIn;
 
 public class Time : ICallable
 {

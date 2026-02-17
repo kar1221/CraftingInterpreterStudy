@@ -42,6 +42,7 @@ namespace CraftingInterpreter.Parsing;
  * ReturnStatement -> "return" Expression? ";"
  * BreakStatement -> "break" ";" ;
  * ContinueStatement -> "continue" ";" ;
+ * ClassDeclaration -> "class" IDENTIFIER "{" Function* "}" ;
  */
 
 public class Parser(List<Token> tokens)
@@ -571,6 +572,9 @@ public class Parser(List<Token> tokens)
     {
         try
         {
+            if (Match(TokenType.Class))
+                return ClassDeclaration();
+            
             if (Match(TokenType.Fun))
                 return Function("function");
 
@@ -584,6 +588,21 @@ public class Parser(List<Token> tokens)
             Synchronize();
             return null;
         }
+    }
+
+    private Stmt.Class ClassDeclaration()
+    {
+        var name = Consume(TokenType.Identifier, "Expect class name.");
+        Consume(TokenType.LeftBrace, "Expect '{' before class body.");
+
+        var methods = new List<Stmt.Function>();
+
+        while (!Check(TokenType.RightBrace) && !IsAtEnd())
+            methods.Add(Function("method"));
+
+        Consume(TokenType.RightBrace, "Expect '}' after class body.");
+
+        return new Stmt.Class(name, methods);
     }
 
     private Stmt.Var VarDeclaration()

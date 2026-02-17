@@ -1,15 +1,14 @@
 using CraftingInterpreter.Interpret.Interfaces;
 
-namespace CraftingInterpreter.Interpret.BuiltInFn;
+namespace CraftingInterpreter.Interpret.BuiltIn;
 
-public class Date : ICallable
+public class Clock : ICallable
 {
     public int Arity() => 0;
 
     public object Call(Interpreter interpreter, List<object> arguments)
     {
-        var now = DateTime.Now;
-        return $"{now.Year}/{now.Month}/{now.Day}";
+        return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
     }
 
     public override string ToString()

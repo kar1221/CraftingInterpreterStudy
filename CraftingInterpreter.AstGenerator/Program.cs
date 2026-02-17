@@ -25,6 +25,7 @@ DefineAst(outputDirectory, "Expr", [
 
 DefineAst(outputDirectory, "Stmt", [
     "Block : List<Stmt> statements",
+    "Class : Token name, List<Stmt.Function> methods",
     "Expression : Expr expr",
     "Function : Token name, List<Token> params, List<Stmt> body",
     "Print : Expr expr",
@@ -32,7 +33,6 @@ DefineAst(outputDirectory, "Stmt", [
     "If : Expr condition, Stmt thenBranch, Stmt? elseBranch",
     "While : Expr condition, Stmt body, Expr? ?increment",
     "Return: Token keyword, Expr? value",
-    "ForIncrement : Expr incrementExpr",
     "Break :",
     "Continue :"
 ]);

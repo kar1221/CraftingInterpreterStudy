@@ -4,7 +4,7 @@ using CraftingInterpreter.Interpret.Interfaces;
 using CraftingInterpreter.TokenModels;
 using Environment = CraftingInterpreter.Env.Environment;
 
-namespace CraftingInterpreter.Interpret.BuiltInFn;
+namespace CraftingInterpreter.Interpret.BuiltIn;
 
 public class LoxCallable(List<Token> parameters, List<Stmt> body, Environment closure, Token? name = null)
     : ICallable

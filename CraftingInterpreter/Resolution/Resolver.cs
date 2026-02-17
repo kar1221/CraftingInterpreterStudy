@@ -1,6 +1,5 @@
 using CraftingInterpreter.AbstractSyntaxTree;
 using CraftingInterpreter.Interpret;
-using CraftingInterpreter.LoxConsole;
 using CraftingInterpreter.Resolution.Errors;
 using CraftingInterpreter.TokenModels;
 
@@ -9,6 +8,7 @@ namespace CraftingInterpreter.Resolution;
 public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IVisitor<object?>
 {
     private readonly Stack<Dictionary<string, bool>> _scopes = new();
+    private FunctionType _currentType = FunctionType.None;
 
     public void Resolve(List<Stmt> statements)
     {
@@ -16,7 +16,7 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
             Resolve(statement);
     }
 
-    public void Resolve(Stmt? statement)
+    private void Resolve(Stmt? statement)
     {
         statement?.Accept(this);
     }
@@ -34,18 +34,19 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         {
             if (scope.ContainsKey(name.Lexeme))
             {
-                Console.WriteLine($"ResolveLocal: found {name.Lexeme} at depth {depth} (stackCount={_scopes.Count})");
                 interpreter.Resolve(expr, depth);
                 return;
             }
 
             depth++;
         }
-        Console.WriteLine($"ResolveLocal: {name.Lexeme} not found in any scope (stackCount={_scopes.Count})");
     }
 
-    private void ResolveFunction(Stmt.Function function)
+    private void ResolveFunction(Stmt.Function function, FunctionType functionType)
     {
+        var enclosingFunction = _currentType;
+        _currentType = functionType;
+        
         BeginScope();
         foreach (var parameter in function.Params)
         {
@@ -55,6 +56,8 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
         Resolve(function.Body);
         EndScope();
+
+        _currentType = enclosingFunction;
     }
 
     private void BeginScope()
@@ -156,6 +159,9 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
     public object? VisitLambdaExpr(Expr.Lambda expr)
     {
+        var enclosingFunction = _currentType;
+        _currentType = FunctionType.Lambda;
+        
         BeginScope();
 
         foreach (var parameter in expr.Params)
@@ -167,6 +173,9 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         Resolve(expr.Body);
 
         EndScope();
+
+        _currentType = enclosingFunction;
+        
         return null;
     }
 
@@ -189,6 +198,13 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         return null;
     }
 
+    public object? VisitClassStmt(Stmt.Class stmt)
+    {
+        Declare(stmt.Name);
+        Define(stmt.Name);
+        return null;
+    }
+
     public object? VisitExpressionStmt(Stmt.Expression stmt)
     {
         Resolve(stmt.Expr);
@@ -200,7 +216,7 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         Declare(stmt.Name);
         Define(stmt.Name);
 
-        ResolveFunction(stmt);
+        ResolveFunction(stmt, FunctionType.Function);
         return null;
     }
 
@@ -244,15 +260,12 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
     public object? VisitReturnStmt(Stmt.Return stmt)
     {
+        if (_currentType == FunctionType.None)
+            throw new ResolutionError(stmt.Keyword, "Cannot return from top-level code");
+        
         if (stmt.Value != null)
             Resolve(stmt.Value);
 
-        return null;
-    }
-
-    public object? VisitForIncrementStmt(Stmt.ForIncrement stmt)
-    {
-        Resolve(stmt.IncrementExpr);
         return null;
     }
 
@@ -265,4 +278,11 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
     {
         return null;
     }
+}
+
+internal enum FunctionType
+{
+    None,
+    Function,
+    Lambda
 }

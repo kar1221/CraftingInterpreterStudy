@@ -1,5 +1,5 @@
 using CraftingInterpreter.AbstractSyntaxTree;
-using CraftingInterpreter.Interpret.BuiltInFn;
+using CraftingInterpreter.Interpret.BuiltIn;
 using CraftingInterpreter.Interpret.Errors;
 using CraftingInterpreter.Interpret.Interfaces;
 using CraftingInterpreter.TokenModels;
@@ -23,6 +23,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         _globals.Define("clock", new Clock());
         _globals.Define("time", new Time());
         _globals.Define("date", new Date());
+        _globals.Define("exit", new Exit());
     }
 
     public void InterpretSingle(Expr expression)
@@ -303,6 +304,14 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         return null;
     }
 
+    public object? VisitClassStmt(Stmt.Class stmt)
+    {
+        _environment.Define(stmt.Name.Lexeme, null);
+        var @class = new LoxClass(stmt.Name.Lexeme);
+        _environment.Assign(stmt.Name, @class);
+        return null;
+    }
+
     public object? VisitExpressionStmt(Stmt.Expression stmt)
     {
         Evaluate(stmt.Expr);
@@ -388,12 +397,6 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         return null;
     }
 
-    public object? VisitForIncrementStmt(Stmt.ForIncrement stmt)
-    {
-        Evaluate(stmt.IncrementExpr);
-        return null;
-    }
-
     public object VisitBreakStmt(Stmt.Break stmt)
     {
         throw new Break();
@@ -407,8 +410,11 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
     #endregion
 
 
-    private void Execute(Stmt stmt)
+    private void Execute(Stmt? stmt)
     {
+        if (stmt == null)
+            return;
+        
         stmt.Accept(this);
     }
 
