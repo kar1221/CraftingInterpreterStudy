@@ -7,12 +7,12 @@ namespace CraftingInterpreter.Interpret.BuiltIn;
 public class LoxClass(
     string name,
     Dictionary<string, LoxCallable> methods,
-    Dictionary<string, LoxCallable> staticMethod
+    Dictionary<string, LoxCallable> staticMethod,
+    LoxClass? superClass
 )
     : LoxInstance(null), ICallable
 {
     public string Name { get; } = name;
-    private Dictionary<string, LoxCallable> _staticMethod = staticMethod;
 
     public override string ToString()
     {
@@ -21,10 +21,16 @@ public class LoxClass(
 
     public LoxCallable? FindMethod(string name)
     {
-        return methods.GetValueOrDefault(name);
+        if (methods.TryGetValue(name, out var value))
+            return value;
+
+        if (superClass != null)
+            return superClass.FindMethod(name);
+
+        return null;
     }
 
-    private LoxCallable? FindStaticMethod(string name) => _staticMethod.GetValueOrDefault(name);
+    private LoxCallable? FindStaticMethod(string name) => staticMethod.GetValueOrDefault(name);
 
     public override object? Get(Token name, Interpreter interpreter)
     {
@@ -55,10 +61,7 @@ public class LoxClass(
         var instance = new LoxInstance(this);
 
         var initializer = FindMethod("init");
-        if (initializer != null)
-        {
-            initializer.Bind(instance).Call(interpreter, arguments);
-        }
+        initializer?.Bind(instance).Call(interpreter, arguments);
 
         return instance;
     }

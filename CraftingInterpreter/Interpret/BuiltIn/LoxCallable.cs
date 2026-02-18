@@ -9,9 +9,9 @@ namespace CraftingInterpreter.Interpret.BuiltIn;
 public class LoxCallable(List<Token> parameters, List<Stmt> body, Environment closure, Token? name = null)
     : ICallable
 {
-    private bool _isInitializer;
+    private readonly bool _isInitializer;
     public bool IsGetter { get; }
-    
+
     public int Arity()
     {
         return IsGetter ? 0 : parameters.Count;
@@ -21,8 +21,8 @@ public class LoxCallable(List<Token> parameters, List<Stmt> body, Environment cl
         this(declaration.Params, declaration.Body,
             closure, declaration.Name)
     {
-        this._isInitializer = isInitializer;
-        this.IsGetter = isGetter;
+        _isInitializer = isInitializer;
+        IsGetter = isGetter;
     }
 
     public object? Call(Interpreter interpreter, List<object> arguments)
@@ -41,7 +41,7 @@ public class LoxCallable(List<Token> parameters, List<Stmt> body, Environment cl
         {
             if (_isInitializer)
                 return closure.GetAt(0, "this");
-            
+
             return returnValue.Value;
         }
 
@@ -60,7 +60,7 @@ public class LoxCallable(List<Token> parameters, List<Stmt> body, Environment cl
 
         var declaration = new Stmt.Function(name!, parameters, body);
 
-        return new LoxCallable(declaration, environment, _isInitializer , IsGetter);
+        return new LoxCallable(declaration, environment, _isInitializer, IsGetter);
     }
 
     public override string ToString()

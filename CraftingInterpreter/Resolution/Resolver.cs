@@ -48,7 +48,7 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
     {
         var enclosingFunction = _currentFunction;
         _currentFunction = functionType;
-        
+
         BeginScope();
         foreach (var parameter in function.Params)
         {
@@ -64,7 +64,7 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
     private void BeginScope()
     {
-        _scopes.Push(new Dictionary<string, bool>());
+        _scopes.Push([]);
     }
 
     private void Declare(Token name)
@@ -148,7 +148,7 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
     {
         if (_currentClass == ClassType.None)
             throw new RuntimeError("Cannot use 'this' outside of class.", expr.Keyword);
-        
+
         ResolveLocal(expr, expr.Keyword);
         return null;
     }
@@ -185,7 +185,7 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
     {
         var enclosingFunction = _currentFunction;
         _currentFunction = FunctionType.Lambda;
-        
+
         BeginScope();
 
         foreach (var parameter in expr.Params)
@@ -199,7 +199,7 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         EndScope();
 
         _currentFunction = enclosingFunction;
-        
+
         return null;
     }
 
@@ -226,10 +226,27 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
     {
         var enclosingClass = _currentClass;
         _currentClass = ClassType.Class;
-        
+
         Declare(stmt.Name);
         Define(stmt.Name);
-        
+
+        if (stmt.SuperClass != null && stmt.Name.Lexeme == stmt.SuperClass.Name.Lexeme)
+        {
+            throw new ResolutionError(stmt.SuperClass.Name, "A class can't inherit from itself.");
+        }
+
+        if (stmt.SuperClass != null)
+        {
+            _currentClass = ClassType.SubClass;
+            Resolve(stmt.SuperClass);
+        }
+
+        if (stmt.SuperClass != null)
+        {
+            BeginScope();
+            _scopes.Peek()["super"] = true;
+        }
+
         BeginScope();
         _scopes.Peek()["this"] = true;
 
@@ -239,21 +256,24 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
             if (method.Name.Lexeme == "init")
                 declaration = FunctionType.Initializer;
-            
+
             ResolveFunction(method, declaration);
         }
-        
+
         foreach (var method in stmt.StaticMethods)
         {
-            var declaration = FunctionType.Method;
-            
+            const FunctionType declaration = FunctionType.Method;
+
             ResolveFunction(method, declaration);
         }
-        
+
         EndScope();
 
+        if (stmt.SuperClass != null)
+            EndScope();
+
         _currentClass = enclosingClass;
-        
+
         return null;
     }
 
@@ -302,10 +322,10 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
     public object? VisitWhileStmt(Stmt.While stmt)
     {
         Resolve(stmt.Condition);
-        
-        if(stmt.Increment != null)
+
+        if (stmt.Increment != null)
             Resolve(stmt.Increment);
-        
+
         Resolve(stmt.Body);
         return null;
     }
@@ -319,7 +339,7 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         {
             if (_currentFunction == FunctionType.Initializer)
                 throw new RuntimeError("Can't return value from an initializer.", stmt.Keyword);
-            
+
             Resolve(stmt.Value);
         }
 
@@ -333,6 +353,18 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
     public object? VisitContinueStmt(Stmt.Continue stmt)
     {
+        return null;
+    }
+
+    public object? VisitSuperExpr(Expr.Super expr)
+    {
+        if (_currentClass == ClassType.None)
+            throw new ResolutionError(expr.Keyword, "Can't use 'super' outside of class.");
+
+        if (_currentClass != ClassType.SubClass)
+            throw new ResolutionError(expr.Keyword, "Can't use 'super' in a class with no superclass.");
+
+        ResolveLocal(expr, expr.Keyword);
         return null;
     }
 }
@@ -349,5 +381,6 @@ internal enum FunctionType
 internal enum ClassType
 {
     None,
-    Class
+    Class,
+    SubClass
 }

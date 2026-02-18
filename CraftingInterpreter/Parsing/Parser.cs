@@ -21,14 +21,14 @@ namespace CraftingInterpreter.Parsing;
  * ErrorBinary -> ( "," | "?" | "==" | "!=" | "<" | "<=" | ">" | ">=" | "+" | "*" | "/" ) Expression ;
  * Call -> Primary ( "(" Arguments? ")" | "." IDENTIFIER )* ;
  * Argument -> Assignment ( "," Expression )* ;
- * Primary -> NUMBER | STRING | "true" | "false" | "nil" | "{" Expression "}" | IDENTIFIER | Lambda;
+ * Primary -> NUMBER | STRING | "true" | "false" | "nil" | "{" Expression "}" | IDENTIFIER | Lambda | "super" "." IDENTIFIER ;
  * Lambda -> "fun" "(" Parameters? ")" Block | "(" Parameters ")" => ( Block | Expression )
  */
 /* Statement */
 /*
  * Program -> Declaration* EOF ;
  * Declaration -> VarDeclaration | Statement | FuncDeclaration;
- * ClassDeclaration -> "class" IDENTIFIER "{" ( ("class"? function) | IDENTIFIER Block)* "}" ;
+ * ClassDeclaration -> "class" IDENTIFIER ( "<" IDENTIFIER )? "{" ( ("class"? function) | IDENTIFIER Block)* "}" ;
  * FuncDeclaration -> "fun" Function;
  * Function -> IDENTIFIER "(" Parameters? ")" Block ;
  * Parameters -> IDENTIFIER ( "," IDENTIFIER )* ;
@@ -98,7 +98,9 @@ public class Parser(List<Token> tokens)
 
         if (!Match(TokenType.Equal, TokenType.PlusEqual, TokenType.MinusEqual, TokenType.StarEqual,
                 TokenType.SlashEqual))
+        {
             return expr;
+        }
 
         var op = Previous();
         var value = Assignment();
@@ -147,9 +149,7 @@ public class Parser(List<Token> tokens)
         Consume(TokenType.Colon, "Expect ':' after then branch of ternary expression.");
         var elseBranch = Conditional();
 
-        expr = new Expr.Ternary(expr, thenBranch, elseBranch);
-
-        return expr;
+        return new Expr.Ternary(expr, thenBranch, elseBranch);
     }
 
     private Expr LogicOr()
@@ -246,7 +246,10 @@ public class Parser(List<Token> tokens)
 
         if (!Match(TokenType.Comma, TokenType.Question, TokenType.EqualEqual, TokenType.BangEqual, TokenType.Less,
                 TokenType.LessEqual, TokenType.Greater, TokenType.GreaterEqual, TokenType.Plus, TokenType.Minus,
-                TokenType.Slash, TokenType.Star)) return Call();
+                TokenType.Slash, TokenType.Star))
+        {
+            return Call();
+        }
 
         var operatorToken = Previous();
         Unary();
@@ -307,6 +310,13 @@ public class Parser(List<Token> tokens)
         if (Match(TokenType.Nil)) return new Expr.Literal(null);
         if (Match(TokenType.This)) return new Expr.This(Previous());
         if (Match(TokenType.Number, TokenType.String)) return new Expr.Literal(Previous().Literal);
+        if (Match(TokenType.Super))
+        {
+            var keyword = Previous();
+            Consume(TokenType.Dot, "Expect '.' after 'super'.");
+            var method = Consume(TokenType.Identifier, "Expect superclass method name.");
+            return new Expr.Super(keyword, method);
+        }
         if (Match(TokenType.Identifier))
             return new Expr.Variable(Previous());
 
@@ -565,7 +575,7 @@ public class Parser(List<Token> tokens)
 
         var parameters = new List<Token>();
         var isGetter = false;
-        
+
         if (Match(TokenType.LeftParen))
         {
             if (!Check(TokenType.RightParen))
@@ -627,6 +637,15 @@ public class Parser(List<Token> tokens)
     private Stmt.Class ClassDeclaration()
     {
         var name = Consume(TokenType.Identifier, "Expect class name.");
+
+        Expr.Variable? superClass = null;
+
+        if (Match(TokenType.Less))
+        {
+            Consume(TokenType.Identifier, "Expect superclass name");
+            superClass = new Expr.Variable(Previous());
+        }
+
         Consume(TokenType.LeftBrace, "Expect '{' before class body.");
 
         var methods = new List<Stmt.Function>();
@@ -642,7 +661,7 @@ public class Parser(List<Token> tokens)
 
         Consume(TokenType.RightBrace, "Expect '}' after class body.");
 
-        return new Stmt.Class(name, methods, staticMethods);
+        return new Stmt.Class(name, methods, staticMethods, superClass);
     }
 
     private Stmt.Var VarDeclaration()

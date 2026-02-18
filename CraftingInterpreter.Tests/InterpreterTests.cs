@@ -312,7 +312,7 @@ public class InterpreterTests
                    init(width) {
                         this.width = width;
                    }
-                   
+
                    area {
                         return this.width * this.width;
                    }
@@ -320,6 +320,25 @@ public class InterpreterTests
               var square = Square(5);
               print square.area;
               """, "25")]
+    [TestCase("""
+              class Square {
+                   init(width) {
+                        this.width = width;
+                   }
+
+                   width(v) {
+                        this.width = v;
+                   }
+
+                   area {
+                        return this.width * this.width;
+                   }
+              }
+              var square = Square(5);
+              print square.area;
+              square.width = 10;
+              print square.area;
+              """, "25\n10\n100")]
     public void Interpreter_Class(string input, string expected)
     {
         AssertStatement(input, expected);

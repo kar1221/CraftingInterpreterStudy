@@ -5,7 +5,7 @@ namespace CraftingInterpreter.Interpret.BuiltIn;
 
 public class LoxInstance(LoxClass? @class)
 {
-    private readonly Dictionary<string, object?> _fields = new();
+    private readonly Dictionary<string, object?> _fields = [];
     public override string ToString() => $"{@class?.Name} instance";
 
     public virtual object? Get(Token name, Interpreter interpreter)

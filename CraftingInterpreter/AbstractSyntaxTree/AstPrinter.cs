@@ -112,7 +112,7 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
 
     public string VisitBlockStmt(Stmt.Block stmt)
     {
-        return Parenthesize("block", [..stmt.Statements]);
+        return Parenthesize("block", [.. stmt.Statements]);
     }
 
     public string VisitClassStmt(Stmt.Class stmt)
@@ -137,7 +137,7 @@ public class AstPrinter : Expr.IVisitor<string>, Stmt.IVisitor<string>
 
     public string VisitVarStmt(Stmt.Var stmt)
     {
-        return Parenthesize($"var {stmt.Name.Lexeme}", stmt.Initializer!);
+        return Parenthesize($"var {stmt.Name.Lexeme}", stmt.Initializer);
     }
 
     public string VisitIfStmt(Stmt.If stmt)

@@ -18,6 +18,7 @@ DefineAst(outputDirectory, "Expr", [
     "Literal : object? value",
     "Logical : Expr left, Token operator, Expr right",
     "This : Token keyword",
+    "Super : Token keyword, Token method",
     "Set : Expr object, Token name, Expr? value",
     "Unary : Token operator, Expr right",
     "Ternary : Expr condition, Expr thenBranch, Expr elseBranch",
@@ -28,7 +29,7 @@ DefineAst(outputDirectory, "Expr", [
 
 DefineAst(outputDirectory, "Stmt", [
     "Block : List<Stmt> statements",
-    "Class : Token name, List<Stmt.Function> methods, List<Stmt.Function> staticMethods",
+    "Class : Token name, List<Function> methods, List<Function> staticMethods, Expr.Variable? superClass = null",
     "Expression : Expr expr",
     "Function : Token name, List<Token> params, List<Stmt> body, bool isGetter = false",
     "Print : Expr expr",
@@ -66,7 +67,7 @@ static void DefineAst(string outputDir, string baseName, List<string> types)
         DefineType(writer, baseName, className, fields);
     }
 
-    writer.WriteLine($"    public abstract T? Accept<T>(IVisitor<T> visitor);");
+    writer.WriteLine("    public abstract T? Accept<T>(IVisitor<T> visitor);");
 
     writer.WriteLine("}");
 }

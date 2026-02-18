@@ -12,7 +12,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
     private Environment _environment;
     private readonly Environment _globals;
     private readonly Action<string>? _writer;
-    private readonly Dictionary<Expr, int> _locals = new();
+    private readonly Dictionary<Expr, int> _locals = [];
 
     public Interpreter(Action<string>? writer = null)
     {
@@ -69,7 +69,6 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         {
             _globals.Assign(expr.Name, value);
         }
-        
         return value;
     }
 
@@ -132,15 +131,16 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         if (callee == null)
             return null;
 
-        var arguments = expr.Arguments.Select(argument => Evaluate(argument)!).ToList();
+        var arguments = expr.Arguments.ConvertAll(argument => Evaluate(argument)!);
 
         if (callee is not ICallable function)
             throw new RuntimeError("Can only call function or classes.", expr.Paren);
 
         if (arguments.Count != function.Arity())
+        {
             throw new RuntimeError($"Expected {function.Arity()} arguments but got {arguments.Count} instead.",
                 expr.Paren);
-
+        }
 
         return function.Call(this, arguments);
     }
@@ -176,10 +176,9 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
             if (IsTruthy(left))
                 return left;
         }
-        else
+        else if (!IsTruthy(left))
         {
-            if (!IsTruthy(left))
-                return left;
+            return left;
         }
 
         return Evaluate(expr.Right);
@@ -198,7 +197,6 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
             throw new RuntimeError("Only instance have fields.", expr.Name);
 
         var value = Evaluate(expr.Value);
-        
         instance.Set(expr.Name, value);
 
         return value;
@@ -245,7 +243,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         {
             return _environment.GetAt(distance, name.Lexeme);
         }
-    
+
         return _globals.Get(name);
     }
 
@@ -305,7 +303,6 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
             case null:
                 return "nil";
             case double:
-            {
                 var text = o.ToString()!;
                 if (text.EndsWith(".0"))
                 {
@@ -313,7 +310,6 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
                 }
 
                 return text;
-            }
             default:
                 return o.ToString()!;
         }
@@ -337,24 +333,43 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
 
     public object? VisitClassStmt(Stmt.Class stmt)
     {
+        object? superClass = null;
+        if (stmt.SuperClass != null)
+        {
+            superClass = Evaluate(stmt.SuperClass);
+
+            if (superClass is not LoxClass)
+            {
+                throw new RuntimeError("Superclass must be a class.", stmt.SuperClass.Name);
+            }
+        }
+
         _environment.Define(stmt.Name.Lexeme, null);
+
+        if (stmt.SuperClass != null)
+        {
+            _environment = new Environment(_environment);
+            _environment.Define("super", superClass);
+        }
 
         var methods = new Dictionary<string, LoxCallable>();
         var staticMethods = new Dictionary<string, LoxCallable>();
-        
+
         foreach (var method in stmt.Methods)
         {
-            var function = new LoxCallable(method, _environment, method.Name.Lexeme == "init", method.IsGetter);
-            methods[method.Name.Lexeme] = function;
+            methods[method.Name.Lexeme] = new LoxCallable(method, _environment, method.Name.Lexeme == "init", method.IsGetter);
         }
 
         foreach (var staticMethod in stmt.StaticMethods)
         {
-            var function = new LoxCallable(staticMethod, _environment, false, staticMethod.IsGetter);
-            staticMethods[staticMethod.Name.Lexeme] = function;
+            staticMethods[staticMethod.Name.Lexeme] = new LoxCallable(staticMethod, _environment, false, staticMethod.IsGetter);
         }
-        
-        var @class = new LoxClass(stmt.Name.Lexeme, methods, staticMethods);
+
+        var @class = new LoxClass(stmt.Name.Lexeme, methods, staticMethods, (LoxClass?)superClass);
+
+        if (superClass != null)
+            _environment = _environment.Enclosing;
+
         _environment.Assign(stmt.Name, @class);
         return null;
     }
@@ -426,13 +441,13 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
                 try
                 {
                     Execute(stmt.Body);
-                    
-                    if(stmt.Increment != null)
+
+                    if (stmt.Increment != null)
                         Evaluate(stmt.Increment);
                 }
                 catch (Continue)
                 {
-                    if(stmt.Increment != null)
+                    if (stmt.Increment != null)
                         Evaluate(stmt.Increment);
                 }
             }
@@ -461,7 +476,7 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
     {
         if (stmt == null)
             return;
-        
+
         stmt.Accept(this);
     }
 
@@ -482,5 +497,16 @@ public class Interpreter : Expr.IVisitor<object>, Stmt.IVisitor<object?>
         {
             _environment = previous;
         }
+    }
+
+    public object? VisitSuperExpr(Expr.Super expr)
+    {
+        var distance = _locals[expr];
+        var superClass = _environment.GetAt(distance, "super") as LoxClass;
+        var instance = _environment.GetAt(distance - 1, "this") as LoxInstance;
+
+        var method = superClass?.FindMethod(expr.Method.Lexeme);
+
+        return method == null ? throw new RuntimeError($"Undefined property {expr.Method.Lexeme}.", expr.Method) : (object)method.Bind(instance!);
     }
 }

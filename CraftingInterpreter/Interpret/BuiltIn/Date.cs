@@ -12,6 +12,7 @@ public class Date : ICallable
         return $"{now.Year}/{now.Month}/{now.Day}";
     }
 
+
     public override string ToString()
     {
         return "<native fn>";

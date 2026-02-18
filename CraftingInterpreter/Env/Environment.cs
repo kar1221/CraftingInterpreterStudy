@@ -5,8 +5,8 @@ namespace CraftingInterpreter.Env;
 
 public class Environment(Environment? enclosing = null)
 {
-    private readonly Dictionary<string, object?> _values = new();
-    private Environment? Enclosing { get; } = enclosing;
+    private readonly Dictionary<string, object?> _values = [];
+    public Environment? Enclosing { get; } = enclosing;
 
     public void Define(string name, object? value)
     {
@@ -53,7 +53,7 @@ public class Environment(Environment? enclosing = null)
         throw new RuntimeError($"Undefined variable {name.Lexeme}.", name);
     }
 
-    public void Assign(Token name, Object? value)
+    public void Assign(Token name, object? value)
     {
         if (_values.ContainsKey(name.Lexeme))
         {
