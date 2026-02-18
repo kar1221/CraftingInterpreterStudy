@@ -211,13 +211,13 @@ public class InterpreterTests
     {
         AssertStatement(input, expected);
     }
-    
-    
+
+
     [TestCase("""
               fun add(a, b) {
                 print a + b;
               }
-              
+
               add(1, 2);
               """, "3")]
     [TestCase("""
@@ -254,6 +254,92 @@ public class InterpreterTests
               add_closure(5);
               """, "0\n2\n4")]
     public void Interpreter_Function(string input, string expected)
+    {
+        AssertStatement(input, expected);
+    }
+
+    [TestCase("""
+              fun do_something(fn) {
+                var i = 2;
+                fn(i);
+              }
+
+              do_something(fun (i) { print i; });
+              """, "2")]
+    [TestCase("""
+              fun do_something(fn) {
+                var i = 2;
+                fn(i);
+              }
+
+              do_something((i) => { print i; });
+              """, "2")]
+    public void Interpreter_Lambdas(string input, string expected)
+    {
+        AssertStatement(input, expected);
+    }
+
+
+    [TestCase("""
+              class Cake {
+                  taste() {
+                      var adjective = "delicious";
+                      print "The " + this.flavor + " cake is " + adjective + "!";
+                  }
+              }
+              var cake = Cake();
+              cake.flavor = "German chocolate";
+              cake.taste(); 
+              """, "German chocolate\nThe German chocolate cake is delicious!")]
+    [TestCase("""
+              class Cake {
+                  init() {
+                      print "Init invoked";
+                  }
+              }
+              var cake = Cake();
+              """, "Init invoked")]
+    [TestCase("""
+              class Math {
+                   class square(n) {
+                        return n * n;
+                   }
+              }
+              print Math.square(2);
+              """, "4")]
+    [TestCase("""
+              class Square {
+                   init(width) {
+                        this.width = width;
+                   }
+
+                   area {
+                        return this.width * this.width;
+                   }
+              }
+              var square = Square(5);
+              print square.area;
+              """, "25")]
+    [TestCase("""
+              class Square {
+                   init(width) {
+                        this.width = width;
+                   }
+
+                   width(v) {
+                        this.width = v;
+                   }
+
+                   area {
+                        return this.width * this.width;
+                   }
+              }
+              var square = Square(5);
+              print square.area;
+              square.width = 10;
+              print square.area;
+              """, "25\n10\n100")]
+    public void Interpreter_Class(string input, string expected)
     {
         AssertStatement(input, expected);
     }

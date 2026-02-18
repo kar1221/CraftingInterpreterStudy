@@ -1,6 +1,8 @@
 using CraftingInterpreter.Interpret;
 using CraftingInterpreter.Interpret.Errors;
 using CraftingInterpreter.Resolution;
+using CraftingInterpreter.Resolution.Errors;
+using Spectre.Console;
 
 namespace CraftingInterpreter.LoxConsole;
 
@@ -30,6 +32,7 @@ public static class Lox
                 RunPrompt();
                 break;
         }
+
     }
 
     private static void RunFile(string path)
@@ -48,8 +51,7 @@ public static class Lox
     {
         while (true)
         {
-            Console.Write("> ");
-            var line = Console.ReadLine();
+            var line = AnsiConsole.Ask<string>(">");
 
             if (line == null)
                 break;
@@ -69,9 +71,6 @@ public static class Lox
             var parser = new Parser(tokens);
             var statements = parser.Parse();
 
-            if (_hadError)
-                return;
-
             var resolver = new Resolver(Interpreter);
             resolver.Resolve(statements);
 
@@ -80,6 +79,10 @@ public static class Lox
         catch (RuntimeError e)
         {
             RuntimeError(e);
+        }
+        catch (ResolutionError e)
+        {
+            Error(e.Token, e.Message);
         }
     }
 
@@ -103,13 +106,13 @@ public static class Lox
 
     public static void RuntimeError(RuntimeError e)
     {
-        Console.Error.WriteLine($"[Line {e.Token?.Line}] : {e.Message}");
+        AnsiConsole.MarkupLineInterpolated($"[bold red]✗ Error at line {e.Token?.Line}[/]: {e.Message}");
         _hadRuntimeError = true;
     }
 
     private static void Report(int line, string where, string message)
     {
-        Console.Error.WriteLine($"[Line {line}] Error {where}: {message}");
+        AnsiConsole.MarkupLineInterpolated($"[bold red]✗ Error at line {line} {where}[/]:  {message}");
         _hadError = true;
     }
 }

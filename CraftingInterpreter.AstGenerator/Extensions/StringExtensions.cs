@@ -11,7 +11,7 @@ public static class StringExtensions
 
         if (s.Length == 1)
             return s.ToUpper();
-        
+
         return char.ToUpper(s[0]) + s[1..];
     }
 }

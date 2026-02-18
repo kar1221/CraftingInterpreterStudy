@@ -1,15 +1,15 @@
 using CraftingInterpreter.Interpret.Interfaces;
 
-namespace CraftingInterpreter.Interpret.BuiltInFn;
+namespace CraftingInterpreter.Interpret.BuiltIn;
 
-public class Clock : ICallable
+public class Time : ICallable
 {
     public int Arity() => 0;
 
-
     public object Call(Interpreter interpreter, List<object> arguments)
     {
-        return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+        var now = DateTime.Now;
+        return $"{now.Hour}:{now.Minute}:{now.Second}";
     }
 
     public override string ToString()

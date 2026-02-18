@@ -1,6 +1,6 @@
 using CraftingInterpreter.AbstractSyntaxTree;
 using CraftingInterpreter.Interpret;
-using CraftingInterpreter.LoxConsole;
+using CraftingInterpreter.Interpret.Errors;
 using CraftingInterpreter.Resolution.Errors;
 using CraftingInterpreter.TokenModels;
 
@@ -9,6 +9,8 @@ namespace CraftingInterpreter.Resolution;
 public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IVisitor<object?>
 {
     private readonly Stack<Dictionary<string, bool>> _scopes = new();
+    private FunctionType _currentFunction = FunctionType.None;
+    private ClassType _currentClass = ClassType.None;
 
     public void Resolve(List<Stmt> statements)
     {
@@ -16,7 +18,7 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
             Resolve(statement);
     }
 
-    public void Resolve(Stmt? statement)
+    private void Resolve(Stmt? statement)
     {
         statement?.Accept(this);
     }
@@ -34,18 +36,19 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         {
             if (scope.ContainsKey(name.Lexeme))
             {
-                Console.WriteLine($"ResolveLocal: found {name.Lexeme} at depth {depth} (stackCount={_scopes.Count})");
                 interpreter.Resolve(expr, depth);
                 return;
             }
 
             depth++;
         }
-        Console.WriteLine($"ResolveLocal: {name.Lexeme} not found in any scope (stackCount={_scopes.Count})");
     }
 
-    private void ResolveFunction(Stmt.Function function)
+    private void ResolveFunction(Stmt.Function function, FunctionType functionType)
     {
+        var enclosingFunction = _currentFunction;
+        _currentFunction = functionType;
+
         BeginScope();
         foreach (var parameter in function.Params)
         {
@@ -55,11 +58,13 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
         Resolve(function.Body);
         EndScope();
+
+        _currentFunction = enclosingFunction;
     }
 
     private void BeginScope()
     {
-        _scopes.Push(new Dictionary<string, bool>());
+        _scopes.Push([]);
     }
 
     private void Declare(Token name)
@@ -115,6 +120,12 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         return null;
     }
 
+    public object? VisitGetExpr(Expr.Get expr)
+    {
+        Resolve(expr.Object);
+        return null;
+    }
+
     public object? VisitGroupingExpr(Expr.Grouping expr)
     {
         Resolve(expr.Expression);
@@ -130,6 +141,22 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
     {
         Resolve(expr.Left);
         Resolve(expr.Right);
+        return null;
+    }
+
+    public object? VisitThisExpr(Expr.This expr)
+    {
+        if (_currentClass == ClassType.None)
+            throw new RuntimeError("Cannot use 'this' outside of class.", expr.Keyword);
+
+        ResolveLocal(expr, expr.Keyword);
+        return null;
+    }
+
+    public object? VisitSetExpr(Expr.Set expr)
+    {
+        Resolve(expr.Value);
+        Resolve(expr.Object);
         return null;
     }
 
@@ -156,6 +183,9 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
 
     public object? VisitLambdaExpr(Expr.Lambda expr)
     {
+        var enclosingFunction = _currentFunction;
+        _currentFunction = FunctionType.Lambda;
+
         BeginScope();
 
         foreach (var parameter in expr.Params)
@@ -167,6 +197,9 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         Resolve(expr.Body);
 
         EndScope();
+
+        _currentFunction = enclosingFunction;
+
         return null;
     }
 
@@ -189,6 +222,61 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         return null;
     }
 
+    public object? VisitClassStmt(Stmt.Class stmt)
+    {
+        var enclosingClass = _currentClass;
+        _currentClass = ClassType.Class;
+
+        Declare(stmt.Name);
+        Define(stmt.Name);
+
+        if (stmt.SuperClass != null && stmt.Name.Lexeme == stmt.SuperClass.Name.Lexeme)
+        {
+            throw new ResolutionError(stmt.SuperClass.Name, "A class can't inherit from itself.");
+        }
+
+        if (stmt.SuperClass != null)
+        {
+            _currentClass = ClassType.SubClass;
+            Resolve(stmt.SuperClass);
+        }
+
+        if (stmt.SuperClass != null)
+        {
+            BeginScope();
+            _scopes.Peek()["super"] = true;
+        }
+
+        BeginScope();
+        _scopes.Peek()["this"] = true;
+
+        foreach (var method in stmt.Methods)
+        {
+            var declaration = FunctionType.Method;
+
+            if (method.Name.Lexeme == "init")
+                declaration = FunctionType.Initializer;
+
+            ResolveFunction(method, declaration);
+        }
+
+        foreach (var method in stmt.StaticMethods)
+        {
+            const FunctionType declaration = FunctionType.Method;
+
+            ResolveFunction(method, declaration);
+        }
+
+        EndScope();
+
+        if (stmt.SuperClass != null)
+            EndScope();
+
+        _currentClass = enclosingClass;
+
+        return null;
+    }
+
     public object? VisitExpressionStmt(Stmt.Expression stmt)
     {
         Resolve(stmt.Expr);
@@ -200,7 +288,7 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
         Declare(stmt.Name);
         Define(stmt.Name);
 
-        ResolveFunction(stmt);
+        ResolveFunction(stmt, FunctionType.Function);
         return null;
     }
 
@@ -234,25 +322,27 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
     public object? VisitWhileStmt(Stmt.While stmt)
     {
         Resolve(stmt.Condition);
-        
-        if(stmt.Increment != null)
+
+        if (stmt.Increment != null)
             Resolve(stmt.Increment);
-        
+
         Resolve(stmt.Body);
         return null;
     }
 
     public object? VisitReturnStmt(Stmt.Return stmt)
     {
+        if (_currentFunction == FunctionType.None)
+            throw new ResolutionError(stmt.Keyword, "Cannot return from top-level code");
+
         if (stmt.Value != null)
+        {
+            if (_currentFunction == FunctionType.Initializer)
+                throw new RuntimeError("Can't return value from an initializer.", stmt.Keyword);
+
             Resolve(stmt.Value);
+        }
 
-        return null;
-    }
-
-    public object? VisitForIncrementStmt(Stmt.ForIncrement stmt)
-    {
-        Resolve(stmt.IncrementExpr);
         return null;
     }
 
@@ -265,4 +355,32 @@ public class Resolver(Interpreter interpreter) : Expr.IVisitor<object?>, Stmt.IV
     {
         return null;
     }
+
+    public object? VisitSuperExpr(Expr.Super expr)
+    {
+        if (_currentClass == ClassType.None)
+            throw new ResolutionError(expr.Keyword, "Can't use 'super' outside of class.");
+
+        if (_currentClass != ClassType.SubClass)
+            throw new ResolutionError(expr.Keyword, "Can't use 'super' in a class with no superclass.");
+
+        ResolveLocal(expr, expr.Keyword);
+        return null;
+    }
+}
+
+internal enum FunctionType
+{
+    None,
+    Function,
+    Lambda,
+    Method,
+    Initializer
+}
+
+internal enum ClassType
+{
+    None,
+    Class,
+    SubClass
 }
